@@ -1,14 +1,26 @@
 from __future__ import annotations
 from typing import Any, Hashable, Callable
 from dataclasses import dataclass as dtc, field;   from types import MappingProxyType as mpt
-from .BaseModels import ManipulatorDict as md, SizedType as st, MemorySizedType as mst, LifetimeType as lt
+from .BaseModels import Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, LifetimeType as lt
 
+##########-Manipulators-##########
+
+@dtc(slots=True)
+class DualValueM:
+    extra_vals: dict[Any, Any]=field(init=False, default=None)
+        
+    def create(self, obj): self.extra_vals={i:None for i in obj}
+        
+    def set(self, obj, base_action, value, key): base_action(); self.extra_vals.setdefault(key, None)
+        
+    def delete(self, obj, base_action, key): base_action(); self.extra_val.pop(key)
+    
 
 @dtc(slots=True)
 class QuantumM:
     links: dict[Any, set[Any] ]=field(init=False, default_factory=dict)
     
-    def create(self, obj): ...
+    def create(self, obj): self.links={i:set() for i in obj}
     
     def get(self, obj, base_action, key) ->Any: ...
     
@@ -25,12 +37,11 @@ class TypedM:
     allowed_values: tuple[type]
     
     def create(self, obj):
-        if not (isinstance(self.allowed_keys, tuple) or isinstance(self.allowed_values, tuple) ): raise TypedTypeError("must pass the types in a tuple")
         for k,v in obj.items(): self.set(None, lambda: None, k, v)
     
     def set(self, obj, base_action, value, key):
-        if type(key) not in self.allowed_keys: raise TypeError(f"invalid key type, expected:-{','.join(f'{i.__name__}' for i in self.allowed_keys)}, got:-'{type(key).__name__}'")
-        elif type(value) not in self.allowed_values: raise TypeError(f"invalid value type, expected:-{','.join(f'{i.__name__}' for i in self.allowed_values)}, got:-'{type(value).__name__}'")
+        if type(key) not in self.allowed_keys: raise TypeError(f"invalid key type, expected:-{' or '.join(f'{i.__name__}' for i in self.allowed_keys)}, got:-'{type(key).__name__}'")
+        elif type(value) not in self.allowed_values: raise TypeError(f"invalid value type, expected:-{' or '.join(f'{i.__name__}' for i in self.allowed_values)}, got:-'{type(value).__name__}'")
         base_action()
         
 
@@ -59,6 +70,22 @@ class CanonicalM:
         for k,v in obj.items():
             if self.checker(value, v): obj._values[key]=v; break
         else: base_action()
+
+@dtc(slots=True)
+class FixSizedM:
+    size: int=field(init=False, default=None)
+    
+    def create(self, obj): self.size=len(obj)
+    
+    def set(self, obj, base_action, value, key):
+        if key in obj: base_action()
+        elif value in obj.values():
+            for k,v in obj.items():
+                if v is value: obj._values.pop(k); break
+            base_action()  
+        else: raise SizedTypeError(f"cannot modify a {type(obj).__name__}'s size")
+    
+    def delete(self, obj, base_action, key): raise SizedTypeError(f"cannot modify a {type(obj).__name__}'s size")
 
 ##########-dict families-##########
 
@@ -94,30 +121,41 @@ class CanonicalDict(md):
 class TypedDict(md):
     """Typed containers enforces value type within specific types."""
     
-    def __init__(self, allowed_keys: tuple[type], allowed_values: tuple[type], /, *args, **kwargs): super().__init__(TypedM(allowed_keys, allowed_values), *args, **kwargs)
+    def __init__(self, allowed_keys: tuple[type], allowed_values: tuple[type], /, *args, **kwargs): super().__init__(TypedM(ts(allowed_keys), ts(allowed_values) ), *args, **kwargs)
     @property
     def allowed_types(self) ->dict[str, tuple[type] ]: return mpt({"key": self._manipulator.allowed_keys,"value": self._manipulator.allowed_values})
 
 
 class QuantumDict(md):
-    def __init__(self, *args, **kwargs): super().__init__(IndexedM(), *args, **kwargs)
+    def __init__(self, *args, **kwargs): super().__init__(QuantumM(), *args, **kwargs)
    
     def entangle(self, a: Hashable, b: Hashable) ->None: self._manipulator.entangle(a, b)
 
 
+class DualValueDict(md):
+    def __init__(self, *args, **kwargs): super().__init__(DualValueM(), *args, **kwargs)
+    @property
+    def extra_values(self): return self._manipulator.extra_vals
+    
+    
+class FixSizedDict(md):
+    def __init__(self, *args, **kwargs): super().__init__(FixSizedM(), *args, **kwargs)
+   
+   
 class LifetimeDict(lt, md): pass
     
 
 class SizedDict(st, md): pass
-    
+     
     
 class MemorySizedDict(mst, md): pass
 
 
 if __name__=="__main__":
-    pr=LifetimeDict(1, {8:9,0:55,776:8})
-    rp=CanonicalDict(lambda x,y: isinstance(x, type(y) ), gg=False, huh=7, gt=True)
-    pr[776];
-    
-    print(pr.check_lifespan(776))
+    pr=FixSizedDict({8:9,0:55,776:8})
+    rp=DualValueDict(gg=False, huh=set(), gt=True)
+    rp.extra_values["gg"]=100
+    print(rp, rp.extra_values)
+    pr[22]=9
+    print(pr)
 

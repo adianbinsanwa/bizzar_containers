@@ -3,11 +3,13 @@ from typing import Any, Callable
 from dataclasses import dataclass as dtc, field;   from random import randint as rint
 from .BaseModels import ManipulatorList as ml, SizedType as st, TypedType as tt, MemorySizedType as mst, LifetimeType as lt
 
+
+
 @dtc(slots=True)
 class HideSeekM:
     hider: int=field(init=False, default=0)
     
-    def _jump(self, size: int): self.hider=rint(0, size-1)
+    def _jump(self, size: int): self.hider=rint(0, size)
     
     def create(self, obj): self._jump(len(obj) )
     

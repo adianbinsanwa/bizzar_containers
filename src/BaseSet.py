@@ -6,13 +6,10 @@ from .BaseModels import ManipulatorSet as ms, SizedType as st, TypedType as tt, 
 @dtc(slots=True)
 class RadioActiveM:   
     def iterate(self, obj, base_action: Callable[[], Any]) ->Iterator[Any]:
-        if obj._values==set(): return base_action()
-        d=obj._values.copy(); s={(i, r() ):e for i, e in enumerate(obj._values)}
-        if r() >= (m:=max(s, key=lambda x: x[1]) )[1] >= r(): obj.discard(s[m])
-        return iter(d)
+        if len(obj) > 0 and (r() >= (high:= max(((r(), i) for i in obj._values), key=lambda x: x[0]) )[0] >= r() ): copy=obj._values.copy(); obj.discard(high[1]); base_action=lambda: iter(copy)
+        return base_action()
         
-
-
+        
 class RadioActiveSet(ms):
     """RadioActiveSet enforces random decay. on each iteration there's a chance for an element to get removed(sometimes nothing happens too)"""
     
@@ -35,6 +32,6 @@ def f(s):
  
 if __name__=="__main__":
     s=RadioActiveSet((8,4,6,46,5,555, 9.276,565,966666,665) ); print(s); print("---------------")
-    for i in range(100): f(s)
+    for i in range(10): f(s)
 
     

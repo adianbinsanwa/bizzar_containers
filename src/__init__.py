@@ -3,7 +3,7 @@ from types import MappingProxyType as mpt
 from .BaseModels import ManipulatorList, ManipulatorSet, ManipulatorDict, BaseManiuatorProtocol
 from .BaseSequence import TypedList, SizedList, MemorySizedList, LifetimeList, HideSeekList
 from .BaseSet import TypedSet, SizedSet, MemorySizedSet, RadioActiveSet
-from .BaseMapping import TypedDict, SizedDict, MemorySizedDict, LifetimeDict, IndexedDict, CanonicalDict, QuantumDict 
+from .BaseMapping import TypedDict, SizedDict, MemorySizedDict, LifetimeDict, IndexedDict, CanonicalDict, QuantumDict, FixSizedDict, DualValueDict
 
 ManipulatorContainers=mpt({list: ManipulatorList, dict: ManipulatorDict, set: ManipulatorSet})
 TypedContainers=mpt({list: TypedList, dict: TypedDict, set: TypedSet})
@@ -44,6 +44,8 @@ __all__=[#families
          "IndexedDict",
          "CanonicalDict",
          "QuantumDict", 
+         "FixSizedDict",
+         "DualValueDict",
          
          #others
          "BaseManiuatorProtocol",
