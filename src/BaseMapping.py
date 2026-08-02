@@ -1,9 +1,11 @@
 from __future__ import annotations
 from typing import Any, Hashable, Callable
 from dataclasses import dataclass as dtc, field;   from types import MappingProxyType as mpt
-from .BaseModels import Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, LifetimeType as lt
+from .BaseModels import Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
+from .SubModels import IndexedType as it
 
 ##########-Manipulators-##########
+
 
 @dtc(slots=True)
 class DualValueM:
@@ -11,52 +13,23 @@ class DualValueM:
         
     def create(self, obj): self.extra_vals={i:None for i in obj}
         
-    def set(self, obj, base_action, value, key): base_action(); self.extra_vals.setdefault(key, None)
+    def set(self, obj, base_action: Callable[[], None], value, key: Hashable): base_action(); self.extra_vals.setdefault(key, None)
         
-    def delete(self, obj, base_action, key): base_action(); self.extra_val.pop(key)
+    def delete(self, obj, base_action: Callable[[], None], key: Hashable): self.extra_vals.pop(key); return base_action()
     
 
 @dtc(slots=True)
-class QuantumM:
-    links: dict[Any, set[Any] ]=field(init=False, default_factory=dict)
+class FixSizedM:
+    size: int=field(init=False, default=None)
     
-    def create(self, obj): self.links={i:set() for i in obj}
+    def create(self, obj): self.size=len(obj)
     
-    def get(self, obj, base_action, key) ->Any: ...
+    def set(self, obj, base_action, value, key: Hashable):
+        if key in obj: base_action()
+        else: raise SizedTypeError(f"cannot modify a {type(obj).__name__}'s size")
     
-    def set(self, obj, base_action, value, key): self.links.setdefault(key, set() ); base_action()
-    
-    def delete(self, obj, base_action, key): self.links.pop(key); base_action()
-    
-    def entange(self, a, b): ...
-    
-    
-@dtc(slots=True, frozen=True)
-class TypedM:
-    allowed_keys: tuple[type]
-    allowed_values: tuple[type]
-    
-    def create(self, obj):
-        for k,v in obj.items(): self.set(None, lambda: None, k, v)
-    
-    def set(self, obj, base_action, value, key):
-        if type(key) not in self.allowed_keys: raise TypeError(f"invalid key type, expected:-{' or '.join(f'{i.__name__}' for i in self.allowed_keys)}, got:-'{type(key).__name__}'")
-        elif type(value) not in self.allowed_values: raise TypeError(f"invalid value type, expected:-{' or '.join(f'{i.__name__}' for i in self.allowed_values)}, got:-'{type(value).__name__}'")
-        base_action()
-        
+    def delete(self, obj, base_action, key): raise SizedTypeError(f"cannot modify a {type(obj).__name__}'s size")
 
-@dtc(slots=True)
-class IndexedM:
-    key_order: list[Hashable]=field(init=False, default=None)
-    
-    def create(self, obj): self.key_order=[i for i in obj]
-        
-    def set(self, obj, base_action, value, key):
-        if key not in self.key_order: self.key_order.append(key)
-        base_action()
-   
-    def delete(self, obj, base_action, key): base_action(), self.key_order.pop(self.key_order.index(key) )
-    
 
 @dtc(slots=True)
 class CanonicalM:
@@ -66,44 +39,55 @@ class CanonicalM:
         d=obj._values.copy(); obj._values.clear()
         for k,v in d.items(): obj[k]=v
     
-    def set(self, obj, base_action, value, key) ->bool:
+    def set(self, obj, base_action: Callable[[], None], value, key: Hashable):
         for k,v in obj.items():
             if self.checker(value, v): obj._values[key]=v; break
         else: base_action()
 
-@dtc(slots=True)
-class FixSizedM:
-    size: int=field(init=False, default=None)
+
+@dtc(slots=True, frozen=True)
+class TypedM:
+    allowed_keys: tuple[type]
+    allowed_values: tuple[type]
     
-    def create(self, obj): self.size=len(obj)
+    def create(self, obj):
+        for k,v in obj.items(): self.set(None, lambda: None, v, k)
     
-    def set(self, obj, base_action, value, key):
-        if key in obj: base_action()
-        elif value in obj.values():
-            for k,v in obj.items():
-                if v is value: obj._values.pop(k); break
-            base_action()  
-        else: raise SizedTypeError(f"cannot modify a {type(obj).__name__}'s size")
-    
-    def delete(self, obj, base_action, key): raise SizedTypeError(f"cannot modify a {type(obj).__name__}'s size")
+    def set(self, obj, base_action: Callable[[], None], value, key: Hashable):
+        if type(key) not in self.allowed_keys: raise TypeError(f"invalid key type, expected:-{' or '.join(f'{i.__name__}' for i in self.allowed_keys)}, got:-'{type(key).__name__}'")
+        elif type(value) not in self.allowed_values: raise TypeError(f"invalid value type, expected:-{' or '.join(f'{i.__name__}' for i in self.allowed_values)}, got:-'{type(value).__name__}'")
+        base_action()
+
 
 ##########-dict families-##########
 
-class IndexedDict[T, U](md[T, U]):
+
+class IndexedDict[T, U](it, md[T, U]):
     """IndexedDict allowes key, value, item access using index"""
     
-    def __init__(self, *args, **kwargs): super().__init__(IndexedM(), *args, **kwargs)
-        
     @property
     def indexes(self) ->tuple[T]: return tuple(self._manipulator.key_order)
      
-    def value_at(self, index) ->U: return self[self.key_at(index)]
+    def value_at(self, index: int) ->U: return self[self.key_at(index)]
     
-    def item_at(self, index) ->dict[T, U]: return {self.key_at(index): self.value_at(index)}
+    def item_at(self, index: int) ->dict[T, U]: return {self.key_at(index): self.value_at(index)}
     
-    def key_at(self, index) ->T:
+    def key_at(self, index: int) ->T:
         try: return self._manipulator.key_order[index]
         except IndexError as ie: raise IndexError(f"{type(self).__name__} index out of range") from None
+            
+            
+class DualValueDict[T, U](md[T, U]):
+    """DualValueDict is an inferior version of MultiValueDict. instead of multiple values it only provides one extra value slot
+       meaning each key can have only two values. on normal access, set, delete you're only interacting with the mani value.
+       if you want to set, get, delete an extra value then access d.extra_values. also when popping a key you'll get both values in a tuple
+    """
+    
+    def __init__(self, *args, **kwargs): super().__init__(DualValueM(), *args, **kwargs)
+    @property
+    def extra_values(self) ->dict[T, Any]: return self._manipulator.extra_vals
+    
+    def pop(self, key: T, default: D=None) ->tuple[U|D, Any]: r=(self.get(key, default), self.extra_values.get(key, None) ); del self[key]; return r
        
 
 class CanonicalDict(md):
@@ -115,34 +99,37 @@ class CanonicalDict(md):
     
     def __init__(self, func: Callable[[Any, Any], bool], /, *args, **kwargs): super().__init__(CanonicalM(func), *args, **kwargs)
     @property
-    def checker(self): return self._manipulator.checker
+    def checker(self) ->Callable[[Any, Any], bool]: return self._manipulator.checker
 
 
 class TypedDict(md):
     """Typed containers enforces value type within specific types."""
     
-    def __init__(self, allowed_keys: tuple[type], allowed_values: tuple[type], /, *args, **kwargs): super().__init__(TypedM(ts(allowed_keys), ts(allowed_values) ), *args, **kwargs)
+    def __init__(self, allowed_keys: tuple[type]|type, allowed_values: tuple[type]|type, /, *args, **kwargs): super().__init__(TypedM(ts(allowed_keys), ts(allowed_values) ), *args, **kwargs)
     @property
     def allowed_types(self) ->dict[str, tuple[type] ]: return mpt({"key": self._manipulator.allowed_keys,"value": self._manipulator.allowed_values})
 
 
-class QuantumDict(md):
-    def __init__(self, *args, **kwargs): super().__init__(QuantumM(), *args, **kwargs)
-   
-    def entangle(self, a: Hashable, b: Hashable) ->None: self._manipulator.entangle(a, b)
-
-
-class DualValueDict(md):
-    def __init__(self, *args, **kwargs): super().__init__(DualValueM(), *args, **kwargs)
-    @property
-    def extra_values(self): return self._manipulator.extra_vals
-    
-    
 class FixSizedDict(md):
+    """FixSizedDict is a sub version of SizedDict. it enforces fix size while allowing mutation
+   
+    """
+    
     def __init__(self, *args, **kwargs): super().__init__(FixSizedM(), *args, **kwargs)
    
+    def swap(self, cur_key: Hashable, new_key: Hashable):
+        if cur_key not in self: raise ValueError(f"invalid target key: {cur_key=} does not exist ")
+        elif new_key in self: raise ValueError(f"key swapping collision: {new_key=} alread exists")
+        val=self._values.pop(cur_key); self._values[new_key]=val
+        
    
-class LifetimeDict(lt, md): pass
+class LifetimeDict(lt, md):
+    def setdefault(self, key: Hashable, value, lifespan: Optional[int]=None):
+        if lifespan is None or key in self: super().setdefault(key, value)
+        self._values[key]=value; self._manipulator.items[key]=self._lifespan_is_valid(lifespan)
+
+
+class RadioActiveDict(rat, md): pass
     
 
 class SizedDict(st, md): pass
@@ -153,9 +140,6 @@ class MemorySizedDict(mst, md): pass
 
 if __name__=="__main__":
     pr=FixSizedDict({8:9,0:55,776:8})
-    rp=DualValueDict(gg=False, huh=set(), gt=True)
-    rp.extra_values["gg"]=100
-    print(rp, rp.extra_values)
-    pr[22]=9
+    
     print(pr)
 
