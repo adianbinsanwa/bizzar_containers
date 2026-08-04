@@ -1,10 +1,13 @@
 from __future__ import annotations
 from typing import Any, Iterator, Optional, Callable
-from dataclasses import dataclass as dtc, field;   from random import randint as rint
-from .BaseModels import ManipulatorList as ml, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
+from dataclasses import dataclass, field;   from random import randint as rint
+from .BaseModels import Dead, ManipulatorList as ml, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
 from .SubModels import T
 
-@dtc(slots=True)
+dtc=prtl(dataclass, slots=True, eq=False)
+
+
+@dtc
 class LifetimeM:
     lifespan: int
     items: list[int]=field(init=False, default=None)
@@ -13,7 +16,7 @@ class LifetimeM:
         dead=set()
         for i in it: 
             self.items[i]-=1
-            if self.items[i]==0: dead.add(i)
+            if self.items[i] is Dead: dead.add(i)
         for i in sorted(dead, reverse=True): del obj[i]
         
     def create(self, obj): self.items=[self.lifespan]*len(obj)
@@ -23,11 +26,11 @@ class LifetimeM:
     def get(self, obj, base_action: Callable[[], T], key: int|slice) ->T: val=base_action(); self._del(obj, range(*key.indices(len(obj) ) ) if isinstance(key, slice) else (key,) ); return val
     
     def set(self, obj, base_action: Callable[[], None], value, key: int|slice): base_action(); self.items[key]=([self.lifespan]*len(value) ) if isinstance(key, slice) else self.lifespan
-    
+  #same  
     def delete(self, obj, base_action: Callable[[], None], key: int|slice): base_action(); del self.items[key]
 
 
-@dtc(slots=True)
+@dtc
 class HideSeekM:
     hider: int=field(init=False, default=0)
     
@@ -37,7 +40,7 @@ class HideSeekM:
     
     def get(self, obj, base_action: Callable[[], T], key: int) ->T:
         i=base_action()
-        if key==self.hider: del obj._values[key]; self._jump(len(obj))
+        if key==self.hider: del obj._values[key]; self._jump(len(obj) )
         return i
     
     def delete(self, obj, base_action: Callable[[], None], key: int|slice): base_action(); self._jump(len(obj) )

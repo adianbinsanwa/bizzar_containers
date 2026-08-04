@@ -1,9 +1,11 @@
 from __future__ import annotations
 from typing import Any, Self, Iterable, Iterator, Callable, Hashable;   from types import UnionType as ut
-from dataclasses import dataclass as dtc, field;   from pympler.asizeof import asizeof;  from random import random as r
+from dataclasses import dataclass, field;   from pympler.asizeof import asizeof;  from random import random as r
 from collections.abc import MutableSequence as ms, MutableSet as mset, MutableMapping as mm
 
+dtc=prtl(dataclass, slots=True, eq=False)
 Typed_simplifier=lambda x: x if isinstance(x, tuple) else ((x,) if isinstance(x, type) else tuple(x) )
+missing=object(); Dead=0
 
 def Typed_simplifier(x: tuple|type|ut):
     try: isinstance(909, x); return x
@@ -11,7 +13,7 @@ def Typed_simplifier(x: tuple|type|ut):
     
 ##########-base models-##########
 
-@dtc(slots=True)
+@dtc
 class ManiuatorProtocol:
     """BaseManipulatorProtocol is a blueprint for manipulator protocols
        there are five protocols:-
@@ -103,7 +105,7 @@ class ManipulatorDict[T, U](BaseContainerType[T], KeyAccess, mm):
 ##########-Manipulators-##########
 
 
-@dtc(slots=True)
+@dtc
 class LifetimeM:
     lifespan: int
     items: dict[Hashable, int]=field(init=False, default=None)
@@ -114,20 +116,20 @@ class LifetimeM:
         it=iter(obj._values.copy() )
         for i in obj._values:
             self.items[i]-=1
-            if self.items[i]==0: d=getattr(obj, "pop" if isinstance(obj, md) else "discard"); d(i)
+            if self.items[i] is Dead: d=getattr(obj, "pop" if isinstance(obj, md) else "discard"); d(i)
         return it
     
     def get(self, obj, base_action: Callable[[], T], key: Hashable) ->T:
         val=base_action(); self.items[key]-=1
-        if self.items[key] ==0: del obj[key]
+        if self.items[key] is Dead: del obj[key]
         return val
         
     def set(self, obj, base_action: Callable[[], None], value: Any, key: object|Hashable=missing): base_action(); self.items.setdefault(value if key is missing else key, self.lifespan)
     
-    def delete(self, obj, base_action: Callable[[], None], value: Hashable): base_action(); self.items.pop(value)
+    def delete(self, obj, base_action: Callable[[], None], value: Hashable): base_action(); del self.items[value]
 
 
-@dtc(slots=True, frozen=True)
+@dtc(frozen=True)
 class SizedM:
     """SizedManipulator is a manipulator for SizedType conatiners"""
     
@@ -147,10 +149,10 @@ class SizedM:
         base_action()
         if len(obj) < self.min_size: raise OverflowError(f"minimum capacity violeted, limit:-{self.min_size}")
     @property
-    def capacity(self): return self.min_size, self.max_size
+    def capacity(self) ->tuple[int, int]: return self.min_size, self.max_size
 
 
-@dtc(slots=True, frozen=True)
+
 class MemorySizedM(SizedM):
     """MemorySizedManipulator is a manipulator for MemorySizedType conatiners."""
     
@@ -163,7 +165,7 @@ class MemorySizedM(SizedM):
         if (asizeof(obj._values) - asizeof(type(obj._values)() ) ) < self.min_size: raise OverflowError(f"minimum memory capacity violeted, limit:-{self.min_size}")
             
 
-@dtc(slots=True, frozen=True)
+@dtc(frozen=True)
 class TypedM:
     """TypedManipulator is a manipulator for TypedType conatiners"""
     
@@ -177,7 +179,7 @@ class TypedM:
         base_action()
 
 
-@dtc(slots=True, frozen=True)
+@dtc(frozen=True)
 class RadioActiveM[T]:   
     def iterate(self, obj, base_action: Callable[[], T]) ->T:
         rand=((r(), i) for i in (obj._values if not isinstance(obj, ManipulatorList) else range(len(obj) ) ) )
@@ -193,14 +195,14 @@ class LifetimeType:
     
     def __init__(self, lifespan: int, *args, **kwargs): super().__init__(self._getM(self._lifespan_is_valid(lifespan) ), *args, **kwargs)
     
-    def _lifespan_is_valid(self, n: int):
+    def _lifespan_is_valid(self, n: int) ->int:
         if not isinstance(n, int): raise TypeError(f"invalid type '{type(n).__name__}'. must be an integer")
         elif n <= 0: raise ValueError("lifespan cannot be zero or negetive")
         return n
         
     def _getM(self, lifespan: int): return LifetimeM(lifespan)
       
-    def check_lifespan(self, target): self._manipulator.get_lifespan(target)
+    def check_lifespan(self, target: int|Hashable) ->int: return self._manipulator.items[target]
    
     
 class SizedType: 
@@ -212,7 +214,7 @@ class SizedType:
     
     def _getM(self, *size): return SizedM(*size)
     @property
-    def capacity(self): return self._manipulator.capacity
+    def capacity(self) ->tuple[int, int]: return self._manipulator.capacity
 
 
 class MemorySizedType(SizedType): 

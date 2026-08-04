@@ -1,13 +1,14 @@
 from __future__ import annotations
-from typing import Any, Hashable, Callable
-from dataclasses import dataclass as dtc, field;   from types import MappingProxyType as mpt
+from typing import Any, Hashable, Callable;   from functools import partial as prtl
+from dataclasses import dataclass, field;   from types import MappingProxyType as mpt
 from .BaseModels import Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
-from .SubModels import IndexedType as it
+from .SubModels import IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
+
+dtc=prtl(dataclass, slots=True, eq=False)
 
 ##########-Manipulators-##########
 
-
-@dtc(slots=True)
+@dtc
 class DualValueM:
     extra_vals: dict[Any, Any]=field(init=False, default=None)
         
@@ -18,7 +19,7 @@ class DualValueM:
     def delete(self, obj, base_action: Callable[[], None], key: Hashable): self.extra_vals.pop(key); return base_action()
     
 
-@dtc(slots=True)
+@dtc
 class FixSizedM:
     size: int=field(init=False, default=None)
     
@@ -31,7 +32,7 @@ class FixSizedM:
     def delete(self, obj, base_action, key): raise SizedTypeError(f"cannot modify a {type(obj).__name__}'s size")
 
 
-@dtc(slots=True)
+@dtc
 class CanonicalM:
     checker: Callable[[Any, Any], bool]
     
@@ -45,7 +46,7 @@ class CanonicalM:
         else: base_action()
 
 
-@dtc(slots=True, frozen=True)
+@dtc(frozen=True)
 class TypedM:
     allowed_keys: tuple[type]
     allowed_values: tuple[type]
@@ -76,6 +77,15 @@ class IndexedDict[T, U](it, md[T, U]):
         try: return self._manipulator.key_order[index]
         except IndexError as ie: raise IndexError(f"{type(self).__name__} index out of range") from None
             
+            
+class UnaryGraphDict(ugt, md):
+    def _set(self, vals):
+        for k,v in vals.items(): self[k]=v
+    
+    def _del(self, val): del self[val]
+        
+    def setdefault(self, key, default, /, *, links: dict[Hashable, Iterable[Hashable] ]={}): val=super().setdefault(key, default); self.new_link(links); return val
+                    
             
 class DualValueDict[T, U](md[T, U]):
     """DualValueDict is an inferior version of MultiValueDict. instead of multiple values it only provides one extra value slot
@@ -124,9 +134,15 @@ class FixSizedDict(md):
         
    
 class LifetimeDict(lt, md):
-    def setdefault(self, key: Hashable, value, lifespan: Optional[int]=None):
-        if lifespan is None or key in self: super().setdefault(key, value)
-        self._values[key]=value; self._manipulator.items[key]=self._lifespan_is_valid(lifespan)
+    def setdefault(self, key: Hashable, default, lifespan: Optional[int]=None):
+        if lifespan is None or key in self: return super().setdefault(key, default)
+        self._values[key]=default; self._manipulator.items[key]=self._lifespan_is_valid(lifespan); return default
+
+
+class BinaryGraphDict(bgt, UnaryGraphDict): pass
+
+
+class TrinaryGraphDict(tgt, UnaryGraphDict): pass
 
 
 class RadioActiveDict(rat, md): pass

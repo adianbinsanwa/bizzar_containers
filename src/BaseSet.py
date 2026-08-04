@@ -1,10 +1,23 @@
 from __future__ import annotations
 from typing import Any, Callable, Iterator, Hashable
-from dataclasses import dataclass as dtc, field
+#from dataclasses import dataclass, field
 from .BaseModels import ManipulatorSet as ms, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
-from .SubModels import IndexedType as it
+from .SubModels import IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
+
+
 
 ##########-set families-##########
+
+
+class UnaryGraphSet(ugt, ms):
+    def _set(self, val): self.update(val)
+    
+    def _del(self, val): self.discard(val)
+    
+    def add(self, value: Hashable, /, *, links: dict[Hashable, Iterable[Hashable] ]={}): super().add(value); self.new_link(links)
+    
+    def update(self, value: Hashable, /, *, links: dict[Hashable, Iterable[Hashable] ]={}): super().update(value); self.new_link(links)
+    
 
 class LifetimeSet(lt, ms):    
     def add(self, value: Hashable, lifespan=None):
@@ -21,8 +34,14 @@ class IndexedSet[T](it, ms[T]):
         
 class RadioActiveSet(rat, ms):
     def _del(self, target): self.discard(target)
+        
+        
+class BinaryGraphSet(bgt, UnGraphSet): pass
     
-
+    
+class TrinaryGraphSet(tgt, UnGraphSet): pass    
+ 
+    
 class SizedSet(st, ms): pass
     
 
@@ -38,7 +57,9 @@ def f(s):
     print("---------------------")
  
 if __name__=="__main__":
-    s=RadioActiveSet((8,4,6,46,5,555, 9.276,565,966666,665) ); print(s); print("---------------"); s.update((99, 2002, 2209))
-    for i in range(10): f(s)
+    s=UnGraphSet(range(10), links={0:{2}, 2:{4}, 4:{6}, 6:{8}} )
+    print(s, f"{s.metadata()=}", f"{s.parents()=}", sep="\n\n-------------------------------------\n\n" )
+    s.remove(0)
+    print(s, f"{s.metadata()=}", f"{s.parents()=}", sep="\n\n-------------------------------------\n\n" )
 
     
