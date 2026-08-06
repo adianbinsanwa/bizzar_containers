@@ -2,15 +2,42 @@ from __future__ import annotations
 from typing import Any, Self, Iterable, Iterator, Callable, Hashable;   from types import UnionType as ut
 from dataclasses import dataclass, field;   from pympler.asizeof import asizeof;  from random import random as r
 from collections.abc import MutableSequence as ms, MutableSet as mset, MutableMapping as mm
+from functools import partial as prtl
 
 dtc=prtl(dataclass, slots=True, eq=False)
 Typed_simplifier=lambda x: x if isinstance(x, tuple) else ((x,) if isinstance(x, type) else tuple(x) )
-missing=object(); Dead=0
+T=TypeVar("T")
+missing=object()
+Dead=0
+
+docs={
+'sized':"""Sized containers takes and enforces a size range. the container would never exceed this range.""",
+
+'typed':"""Typed containers enforces value type within specific types.""",
+
+'memorysized':"""MemorySized containers is a variant of Sized containes. it counts capacity in memory bytes""",
+
+'lifetime':"""LifetimeType containers's elements slowly decays after each access/iteration.""",
+
+'radioactive':"""RadioActiveType enforces random decay. on each iteration there's a chance for an element to get removed(sometimes nothing happens too)""",
+
+'manipulator': """BaseContainer/ManipulatorType is the base type for manipulator container family.
+the manipulator given by the user controls the behavior when interacting with the container""",
+}
+def open_collector_slot(obj: mm):
+    if isinstance(obj, mm): del obj._collector
 
 def Typed_simplifier(x: tuple|type|ut):
     try: isinstance(909, x); return x
     except TypeError as e: raise TypeError("invalid 'allowed types'. must be a type, a tuple of types or a union") from None
-    
+        
+        
+def set_collector(obj: T, collector: Optional[Collector]=None) ->T:
+    if hasattr(obj, '_collector') and obj._collector is None: raise TypeError()
+    elif (collector_has_passed:= collector is not None) and type(collector) is not Collector: raise TypeError()
+    setattr(obj, '_collector', collector if collector_has_passed else Collector() ); return obj
+        
+  
 ##########-base models-##########
 
 @dtc
@@ -49,15 +76,15 @@ class KeyAccess:
     
 
 class BaseContainerType[T]:
-    """BaseContainer/ManipulatorType is the base type for manipulator container family
-       the manipulator given by the user controls the behavior when interacting with the container
-    """#create, iterate
-
+    #create, iterate
     __slots__=("_values", "_manipulator")
+    __doc__=docs['manipulator']
     
     def __init__(self, manipulator): self._manipulator=manipulator; self._notify("create")
     
     #base container ops
+    def __eq__(self, other): return self._values == other if not hasattr(other, '_values') else other._values
+    
     def __repr__(self) ->str: return f"{type(self).__name__}({self._values})"
     
     def __iter__(self) ->Iterator[T]: return self._notify("iterate", default= lambda: iter(self._values) )
@@ -77,6 +104,7 @@ class BaseContainerType[T]:
 
 class ManipulatorSet[T](BaseContainerType[T], mset):
     #set
+    __doc__=docs['manipulator']
     
     def __init__(self, manipulator, it: Iterable[Hashable]=() ): self._values=set(it); super().__init__(manipulator)
     
@@ -92,6 +120,7 @@ class ManipulatorSet[T](BaseContainerType[T], mset):
 
 class ManipulatorList[T](BaseContainerType[T], KeyAccess, ms):
     #set
+    __doc__=docs['manipulator']
     
     def __init__(self, manipulator, it: Iterable[T]=() ): self._values=list(it); super().__init__(manipulator)
     
@@ -99,7 +128,10 @@ class ManipulatorList[T](BaseContainerType[T], KeyAccess, ms):
         
         
 class ManipulatorDict[T, U](BaseContainerType[T], KeyAccess, mm):
-    def __init__(self, manipulator, it: Iterable[tuple[T, U] ]=(), /, **kwargs): self._values=dict(it)|kwargs; super().__init__(manipulator);
+    #__slots__=("_collector",)
+    __doc__=docs['manipulator']
+    
+    def __init__(self, manipulator, it: Iterable[tuple[T, U] ]=(), /, **kwargs): self._values=dict(it)|kwargs; super().__init__(manipulator)#; self._collector=None
     
     
 ##########-Manipulators-##########
@@ -110,13 +142,13 @@ class LifetimeM:
     lifespan: int
     items: dict[Hashable, int]=field(init=False, default=None)
     
-    def create(self, obj): self.items={i:self.lifespan for i in obj._values}
+    def create(self, obj): self.items={i:self.lifespan for i in obj._values}#; open_collector_slot(obj)
     
     def iterate(self, obj, base_action: Callable[[], T]) ->T:
         it=iter(obj._values.copy() )
         for i in obj._values:
             self.items[i]-=1
-            if self.items[i] is Dead: d=getattr(obj, "pop" if isinstance(obj, md) else "discard"); d(i)
+            if self.items[i] is Dead: getattr(obj, "pop" if isinstance(obj, md) else "discard")(i)
         return it
     
     def get(self, obj, base_action: Callable[[], T], key: Hashable) ->T:
@@ -181,6 +213,8 @@ class TypedM:
 
 @dtc(frozen=True)
 class RadioActiveM[T]:   
+    #def create(self, obj): open_collector_slot(obj)
+    
     def iterate(self, obj, base_action: Callable[[], T]) ->T:
         rand=((r(), i) for i in (obj._values if not isinstance(obj, ManipulatorList) else range(len(obj) ) ) )
         if len(obj) > 0 and (r() >= (high:= max(rand, key=lambda x: x[0]) )[0] >= r() ): it=iter(obj._values.copy() ); obj._del(high[1]); return it
@@ -191,8 +225,6 @@ class RadioActiveM[T]:
 
 
 class LifetimeType:
-    """LifetimeType containers's elements slowly decays after each access/iteration."""
-    
     def __init__(self, lifespan: int, *args, **kwargs): super().__init__(self._getM(self._lifespan_is_valid(lifespan) ), *args, **kwargs)
     
     def _lifespan_is_valid(self, n: int) ->int:
@@ -206,10 +238,6 @@ class LifetimeType:
    
     
 class SizedType: 
-    """Sized containers takes and enforces a size range.
-       the container would never exceed this range.
-    """
-    
     def __init__(self, size: tuple[int, int]|int, /, *args, **kwargs): super().__init__(self._getM(*(size if isinstance(size, tuple) else (0, size) ) ), *args, **kwargs)
     
     def _getM(self, *size): return SizedM(*size)
@@ -218,22 +246,16 @@ class SizedType:
 
 
 class MemorySizedType(SizedType): 
-    """MemorySized containers is a variant of Sized containes. it counts capacity in memory bytes"""    
-    
     def _getM(self, *size): return MemorySizedM(*size)
 
 
 class TypedType:
-    """Typed containers enforces value type within specific types."""
-    
     def __init__(self, allowed_types: type|tuple[type], /, *args, **kwargs): super().__init__(TypedM(Typed_simplifier(allowed_types) ), *args, **kwargs) 
     @property
     def allowed_types(self): return self._manipulator.allowed_types
 
 
 class RadioActiveType:
-    """RadioActiveType enforces random decay. on each iteration there's a chance for an element to get removed(sometimes nothing happens too)"""
-    
     def __init__(self, *args, **kwargs): super().__init__(RadioActiveM(), *args, **kwargs)
     
     def _del(self, target): del self[target]

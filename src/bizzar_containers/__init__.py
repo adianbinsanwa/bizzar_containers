@@ -3,7 +3,7 @@ from types import MappingProxyType as mpt
 from .BaseModels import (
 
 ManipulatorList, ManipulatorSet, ManipulatorDict,
-ManiuatorProtocol)
+ManipulatorProtocol)
 
 
 from .BaseSequence import (
@@ -15,14 +15,16 @@ RadioActiveList, LifetimeList, HideSeekList)
 from .BaseSet import (
 
 TypedSet, SizedSet, MemorySizedSet,
-IndexedSet, RadioActiveSet, LifetimeSet)
+IndexedSet, RadioActiveSet, LifetimeSet,
+UnaryGraphSet, BinaryGraphSet, TrinaryGraphSet)
 
 
 from .BaseMapping import (
 
 TypedDict, SizedDict, MemorySizedDict,
 RadioActiveDict, LifetimeDict, IndexedDict,
-CanonicalDict, FixSizedDict, DualValueDict)
+CanonicalDict, FixSizedDict, DualValueDict,
+UnaryGraphDict, BinaryGraphDict, TrinaryGraphDict)
 
 
 
@@ -52,14 +54,15 @@ list_types=mpt({
 
 set_types=mpt({
 'Manipulator': ManipulatorSet, 'Sized': SizedSet, 'Typed': TypedSet, 'MemorySized': MemorySizedSet,
-'RadioActive': RadioActiveSet, 'Lifetime': LifetimeSet, 'Indexed': IndexedSet
+'RadioActive': RadioActiveSet, 'Lifetime': LifetimeSet, 'Indexed': IndexedSet,
+'Graph': mpt({'Unary': UnaryGraphSet, 'Binary': BinaryGraphSet, 'Trinary': TrinaryGraphSet})
 })
 
 
 dict_types=mpt({
 'Manipulator': ManipulatorDict, 'Sized': SizedDict, 'Typed': TypedDict, 'MemorySized': MemorySizedDict,
 'Lifetime': LifetimeDict, 'Indexed': IndexedDict, 'Canonical': CanonicalDict, 'DualValue': DualValueDict, 
-'FixSized': FixSizedDict
+'FixSized': FixSizedDict, 'Graph': mpt({'Unary': UnaryGraphDict, 'Binary': BinaryGraphDict, 'Trinary': TrinaryGraphDict})
 })
 
 
@@ -98,6 +101,9 @@ __all__=[#types
          "RadioActiveSet",
          "LifetimeSet",
          "IndexedSet",
+         "UnaryGraphSet",
+         "BinaryGraphSet",
+         "TrinaryGraphSet",
          
          #dicts
          "ManipulatorDict",
@@ -110,8 +116,11 @@ __all__=[#types
          "CanonicalDict",
          "FixSizedDict",
          "DualValueDict",
+         "UnaryGraphDict",
+         "BinaryGraphDict",
+         "TrinaryGraphDict",
          
          #others
-         "ManiuatorProtocol",
+         "ManipulatorProtocol",
          "convert",
          ]

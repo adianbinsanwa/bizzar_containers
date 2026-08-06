@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import Any, Hashable, Callable;   from functools import partial as prtl
+from typing import Any, Hashable, Callable
 from dataclasses import dataclass, field;   from types import MappingProxyType as mpt
-from .BaseModels import Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
-from .SubModels import IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
+from BaseModels import prtl, docs as bm_docs, Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
+from SubModels import docs as sm_docs,IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
 
 dtc=prtl(dataclass, slots=True, eq=False)
 
@@ -10,7 +10,7 @@ dtc=prtl(dataclass, slots=True, eq=False)
 
 @dtc
 class DualValueM:
-    extra_vals: dict[Any, Any]=field(init=False, default=None)
+    extra_vals: dict[Hashable, Any]=field(init=False, default=None)
         
     def create(self, obj): self.extra_vals={i:None for i in obj}
         
@@ -64,8 +64,8 @@ class TypedM:
 
 
 class IndexedDict[T, U](it, md[T, U]):
-    """IndexedDict allowes key, value, item access using index"""
-    
+    __doc__=sm_docs['indexed']
+       
     @property
     def indexes(self) ->tuple[T]: return tuple(self._manipulator.key_order)
      
@@ -77,15 +77,6 @@ class IndexedDict[T, U](it, md[T, U]):
         try: return self._manipulator.key_order[index]
         except IndexError as ie: raise IndexError(f"{type(self).__name__} index out of range") from None
             
-            
-class UnaryGraphDict(ugt, md):
-    def _set(self, vals):
-        for k,v in vals.items(): self[k]=v
-    
-    def _del(self, val): del self[val]
-        
-    def setdefault(self, key, default, /, *, links: dict[Hashable, Iterable[Hashable] ]={}): val=super().setdefault(key, default); self.new_link(links); return val
-                    
             
 class DualValueDict[T, U](md[T, U]):
     """DualValueDict is an inferior version of MultiValueDict. instead of multiple values it only provides one extra value slot
@@ -113,7 +104,7 @@ class CanonicalDict(md):
 
 
 class TypedDict(md):
-    """Typed containers enforces value type within specific types."""
+    __doc__=bm_docs['typed']
     
     def __init__(self, allowed_keys: tuple[type]|type, allowed_values: tuple[type]|type, /, *args, **kwargs): super().__init__(TypedM(ts(allowed_keys), ts(allowed_values) ), *args, **kwargs)
     @property
@@ -134,28 +125,40 @@ class FixSizedDict(md):
         
    
 class LifetimeDict(lt, md):
+    __doc__=bm_docs['lifetime']
+    
     def setdefault(self, key: Hashable, default, lifespan: Optional[int]=None):
         if lifespan is None or key in self: return super().setdefault(key, default)
         self._values[key]=default; self._manipulator.items[key]=self._lifespan_is_valid(lifespan); return default
 
 
-class BinaryGraphDict(bgt, UnaryGraphDict): pass
+class UnaryGraphDict(ugt, md):
+    __doc__=sm_docs['unary']
+         
 
-
-class TrinaryGraphDict(tgt, UnaryGraphDict): pass
-
-
-class RadioActiveDict(rat, md): pass
+class BinaryGraphDict(bgt, md):
+    __doc__=sm_docs['binary']
     
 
-class SizedDict(st, md): pass
+class TrinaryGraphDict(tgt, md):
+    __doc__=sm_docs['trinary']
+    
+
+class RadioActiveDict(rat, md):
+    __doc__=bm_docs['radioactive']
+    
+    
+class SizedDict(st, md):
+    __doc__=bm_docs['sized']
      
     
-class MemorySizedDict(mst, md): pass
-
+class MemorySizedDict(mst, md):
+    __doc__=bm_docs['memorysized']
+    
 
 if __name__=="__main__":
-    pr=FixSizedDict({8:9,0:55,776:8})
+    pr=BinaryGraphDict({8:9,0:55,776:8}, gg=77, links={8: {0}})
     
-    print(pr)
+    print(pr, pr.metadata())
+    
 

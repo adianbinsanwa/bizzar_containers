@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any, Iterator, Optional, Callable
 from dataclasses import dataclass, field;   from random import randint as rint
-from .BaseModels import Dead, ManipulatorList as ml, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
-from .SubModels import T
+from .BaseModels import T, prtl, Dead, docs as bm_docs, ManipulatorList as ml, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
+#from .SubModels import 
 
 dtc=prtl(dataclass, slots=True, eq=False)
 
@@ -56,6 +56,8 @@ class HideSeekList(ml):
         
         
 class LifetimeList(lt, ml):
+    __doc__=bm_docs['lifetime']
+    
     def _getM(self, lifespan): return LifetimeM(lifespan)
     
     def append(self, value, lifespan: Optional[int]=None):
@@ -68,16 +70,20 @@ class LifetimeList(lt, ml):
     
     
       
-class RadioActiveList(rat, ml): pass
+class RadioActiveList(rat, ml):
+    __doc__=bm_docs['radioactive']
     
 
-class SizedList(st, ml): pass
+class SizedList(st, ml):
+    __doc__=bm_docs['sized']
     
 
-class TypedList(tt, ml): pass
+class TypedList(tt, ml):
+    __doc__=bm_docs['typed']
     
     
-class MemorySizedList(mst, ml): pass
+class MemorySizedList(mst, ml):
+    __doc__=bm_docs['memorysized']
     
 
 
