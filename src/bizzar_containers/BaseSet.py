@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any, Callable, Iterator, Hashable;   from itertools import pairwise as prws
 #from dataclasses import dataclass, field
-from BaseModels import docs as bm_docs, ManipulatorSet as ms, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
-from SubModels import docs as sm_docs, IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
+from .BaseModels import docs, ManipulatorSet as ms, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
+from .SubModels import IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
 
 
 
@@ -10,9 +10,9 @@ from SubModels import docs as sm_docs, IndexedType as it, UnaryGraphType as ugt,
 
 
 class LifetimeSet(lt, ms):   
-    __doc__=bm_docs['lifetime']
+    __doc__=docs['lifetime']
     
-    def from_itetable(self, res): return type(self)(self._manipulator.lifespan, res)
+    def _from_itetable(self, res): return type(self)(self._manipulator.lifespan, res)
     
     def add(self, value: Hashable, lifespan=None):
         if value in self: return
@@ -21,33 +21,33 @@ class LifetimeSet(lt, ms):
        
         
 class IndexedSet[T](it, ms[T]):
-    __doc__=sm_docs['indexed']
+    __doc__=docs['indexed']
      
     def order(self) ->tuple[T]: return tuple(self._manipulator.key_order)
         
         
 class RadioActiveSet(rat, ms):
-    __doc__=bm_docs['radioactive']
+    __doc__=docs['radioactive']
     
     def _del(self, target): self.discard(target)
         
         
 class SizedSet(st, ms):
-    __doc__=bm_docs['sized']
+    __doc__=docs['sized']
     
-    def from_iterable(self, res): return type(self)(self.capacity, res)
+    def _from_iterable(self, res): return type(self)(self.capacity, res)
     
 
 class TypedSet(tt, ms):
     __doc__=bm_docs['typed']
     
-    def from_iterable(self, res): return type()(self.allowed_types, res)
+    def _from_iterable(self, res): return type()(self.allowed_types, res)
     
     
 class MemorySizedSet(mst, ms):
     __doc__=bm_docs['memorysized']
     
-    def from_iterable(self, res): return type(self)(self.capacity, res)
+    def _from_iterable(self, res): return type(self)(self.capacity, res)
 
 
 class UnaryGraphSet(ugt, ms):

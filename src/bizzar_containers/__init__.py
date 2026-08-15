@@ -3,6 +3,7 @@ from types import MappingProxyType as mpt
 from .BaseModels import (
 
 ManipulatorList, ManipulatorSet, ManipulatorDict,
+ManipulatorTuple, ManipulatorFrozenSet, ManipulatorFrozenDict
 ManipulatorProtocol)
 
 
@@ -29,7 +30,8 @@ UnaryGraphDict, BinaryGraphDict, TrinaryGraphDict)
 
 
 #families as as invariants
-ManipulatorContainers=mpt({list: ManipulatorList, dict: ManipulatorDict, set: ManipulatorSet})
+ManipulatorContainers=mpt({list: ManipulatorList, dict: ManipulatorDict, set: ManipulatorSet
+                           tuple: ManipulatorTuple, mpt: ManipulatorFrozenDict, frozenset: ManipulatorFrozenSet})
 
 TypedContainers=mpt({list: TypedList, dict: TypedDict, set: TypedSet})
 
@@ -42,27 +44,27 @@ RadioActiveContainers=mpt({list: RadioActiveList, dict: RadioActiveDict, set: Ra
 LifetimeContainers=mpt({list: LifetimeList, dict: LifetimeDict, set: LifetimeSet})
 
 
-
-
-
 #families as types
-list_types=mpt({
+sequence_types=mpt({
 'Manipulator': ManipulatorList, 'Sized': SizedList, 'Typed': TypedList, 'MemorySized': MemorySizedList,
-'RadioActive': RadioActiveList, 'Lifetime': LifetimeList, 'HideSeek': HideSeekList
+'RadioActive': RadioActiveList, 'Lifetime': LifetimeList, 'HideSeek': HideSeekList,
+'Immutable': ManipulatorTuple,         
 })
 
 
 set_types=mpt({
 'Manipulator': ManipulatorSet, 'Sized': SizedSet, 'Typed': TypedSet, 'MemorySized': MemorySizedSet,
 'RadioActive': RadioActiveSet, 'Lifetime': LifetimeSet, 'Indexed': IndexedSet,
-'Graph': mpt({'Unary': UnaryGraphSet, 'Binary': BinaryGraphSet, 'Trinary': TrinaryGraphSet})
+'Graph': mpt({'Unary': UnaryGraphSet, 'Binary': BinaryGraphSet, 'Trinary': TrinaryGraphSet}),
+'Immutable': ManipulatorFrozenSet
 })
 
 
-dict_types=mpt({
+mapping_types=mpt({
 'Manipulator': ManipulatorDict, 'Sized': SizedDict, 'Typed': TypedDict, 'MemorySized': MemorySizedDict,
 'Lifetime': LifetimeDict, 'Indexed': IndexedDict, 'Canonical': CanonicalDict, 'DualValue': DualValueDict, 
-'FixSized': FixSizedDict, 'Graph': mpt({'Unary': UnaryGraphDict, 'Binary': BinaryGraphDict, 'Trinary': TrinaryGraphDict})
+'FixSized': FixSizedDict, 'Graph': mpt({'Unary': UnaryGraphDict, 'Binary': BinaryGraphDict, 'Trinary': TrinaryGraphDict}),
+'Immutable': ManipulatorFrozenDict
 })
 
 
@@ -73,9 +75,9 @@ def convert(container, family: mpt[type, type], *args, **kwargs): return family[
 
 
 __all__=[#types
-         "list_types",
+         "sequence_types",
          "set_types",
-         "dict_types",
+         "mapping_types",
          
          #families
          "ManipulatorContainers",
@@ -87,6 +89,7 @@ __all__=[#types
          
          #lists
          "ManipulatorList",
+         "ManipulatorTuple",
          "SizedList",
          "TypedList",
          "MemorySizedList",
@@ -95,6 +98,7 @@ __all__=[#types
          
          #sets
          "ManipulatorSet",
+         "ManipulatorFrozenSet",
          "SizedSet", 
          "TypedSet",
          "MemorySizedSet",
@@ -107,6 +111,7 @@ __all__=[#types
          
          #dicts
          "ManipulatorDict",
+         "ManipulatorFrozenDict",
          "SizedDict",
          "TypedDict",
          "MemorySizedDict",

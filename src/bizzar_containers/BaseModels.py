@@ -1,78 +1,37 @@
 from __future__ import annotations
-from typing import Any, Self, Iterable, Iterator, Callable, Hashable;   from types import UnionType as ut
-from dataclasses import dataclass, field;   from pympler.asizeof import asizeof;  from random import random as r
-from collections.abc import MutableSequence as ms, MutableSet as mset, MutableMapping as mm
-from functools import partial as prtl
+from typing import Any, Self, TypeVar, Iterable, Iterator, Callable, Hashable;   from types import UnionType as ut, MappingProxyType as mpt
+from dataclasses import dataclass, field;   from pympler.asizeof import asizeof;  from random import random as r;   from functools import partial as prtl
+from collections.abc import Sequence as fs, Set as fset, Mapping as fm, MutableSequence as ms, MutableSet as mset, MutableMapping as mm
+from .documents import docs
 
 dtc=prtl(dataclass, slots=True, eq=False)
 Typed_simplifier=lambda x: x if isinstance(x, tuple) else ((x,) if isinstance(x, type) else tuple(x) )
 T=TypeVar("T")
 missing=object()
 Dead=0
-
-docs={
-'sized':"""Sized containers takes and enforces a size range. the container would never exceed this range.""",
-
-'typed':"""Typed containers enforces value type within specific types.""",
-
-'memorysized':"""MemorySized containers is a variant of Sized containes. it counts capacity in memory bytes""",
-
-'lifetime':"""LifetimeType containers's elements slowly decays after each access/iteration.""",
-
-'radioactive':"""RadioActiveType enforces random decay. on each iteration there's a chance for an element to get removed(sometimes nothing happens too)""",
-
-'manipulator': """BaseContainer/ManipulatorType is the base type for manipulator container family.
-the manipulator given by the user controls the behavior when interacting with the container""",
-}
-def open_collector_slot(obj: mm):
-    if isinstance(obj, mm): del obj._collector
-
+   
 def Typed_simplifier(x: tuple|type|ut):
     try: isinstance(909, x); return x
     except TypeError as e: raise TypeError("invalid 'allowed types'. must be a type, a tuple of types or a union") from None
-        
-        
-def set_collector(obj: T, collector: Optional[Collector]=None) ->T:
-    if hasattr(obj, '_collector') and obj._collector is None: raise TypeError()
-    elif (collector_has_passed:= collector is not None) and type(collector) is not Collector: raise TypeError()
-    setattr(obj, '_collector', collector if collector_has_passed else Collector() ); return obj
-        
+               
   
 ##########-base models-##########
 
 @dtc
-class ManiuatorProtocol:
-    """BaseManipulatorProtocol is a blueprint for manipulator protocols
-       there are five protocols:-
-           create:- after instansiating the container "create" is called,
-           iterate:- when iter() is called on the container "iterate" is called
-           get:- when element accessing happens "get" is called
-           set:- when setting a value happens "set" is called
-           delete:- when deleting an element "delete" is called
-       note:- if the manipulator doesn't implement the target protocol. it'll switch to a base_protocol instead.
-            otherwise the manipulator is expected to handle the action.
-    """
+class ManipulatorProtocol:
+    __doc__=docs["protocol"]
     
-    def create(self, obj) ->None: pass
+    def create(self, obj) ->None: print("create")
         
-    def iterate(self, obj, base_action: Callable[[], T]) ->T: return base_action()
+    def iterate(self, obj, base_action: Callable[[], T]) ->T: print("iterate"); return base_action()
         
-    def get(self, obj, base_action: Callable[[] ,T], key) ->T: return base_action()
+    def get(self, obj, base_action: Callable[[] ,T], key) ->T: print("get", key); return base_action()
         
-    def set(self, obj, base_action: Callable[[], None], value, key=None): base_action()
+    def set(self, obj, base_action: Callable[[], None], value, key=None): print("set", value, key); base_action()
         
-    def delete(self, obj, base_action: Callable[[], None], key): base_action()
-    
-
-class KeyAccess:
-    """This class is inherited by classes whom needs __getitem__, __setitem__, __delitem__"""
-    #get, set, delete
+    def insert(self, obj, base_action: Callable[[], None], value, key=None) ->None: print("insert", value, key); base_action() 
         
-    def __getitem__(self, key) ->Any: return self._notify("get", key, default=lambda: self._values[key])
-        
-    def __setitem__(self, key, value) ->None: self._notify("set", value, key, default=lambda: self._values.__setitem__(key, value) )
-     
-    def __delitem__(self, key) ->None: self._notify("delete", key, default=lambda: self._values.__delitem__(key) )
+    def delete(self, obj, base_action: Callable[[], None], key): print("delete", key); base_action()
     
 
 class BaseContainerType[T]:
@@ -101,16 +60,45 @@ class BaseContainerType[T]:
             
 ##########-Manipulator family-##########
 
+#immutables
+class ManipulatorFrozenSet[T](BaseContainerType[T], fset):
+    __doc__=docs['manipulator']
+    
+    def __init__(self, manipulator, it: Iterable[Hashable]=() ): self._values=frozenset(it); super().__init__(manipulator)
+    
 
+class ManipulatorTuple[T](BaseContainerType[T], fs):
+    __slots__=("_normalize_slice",)
+    __doc__=docs['manipulator']
+    
+    def __init__(self, manipulator, it: Iterable[T]=(), /, *, normalize_slice: bool =False): self._values, self._normalize_slice=tuple(it), normalize_slice; super().__init__(manipulator)
+    
+    def __getitem__(self, key) ->Any:
+        if not self._normalize_slice and not isinstance(key, slice): return self._notify("get", key, default=lambda: self._values[key])
+        return list(self[i] for i in range(*key.indices(len(self) ) ) )
+    
+
+class ManipulatorFrozenDict[T, U](BaseContainerType[T], fm):
+    __doc__=docs['manipulator']
+    
+    def __init__(self, manipulator, it: Iterable[tuple[T, U] ]=(), /, **kwargs): self._values=mpt(dict(it)|kwargs ); super().__init__(manipulator)
+    
+    def __getitem__(self, key) ->Any: return self._notify("get", key, default=lambda: self._values[key])
+    
+
+
+#mutables
 class ManipulatorSet[T](BaseContainerType[T], mset):
     #set
     __doc__=docs['manipulator']
     
     def __init__(self, manipulator, it: Iterable[Hashable]=() ): self._values=set(it); super().__init__(manipulator)
     
-    def add(self, other: Hashable): 
-        if other not in self: self._notify("set", other, default=lambda: self._values.add(other) )
-    
+    def add(self, value: Hashable): 
+        if value in self: return
+        elif hasattr(self._manipulator, "insert"): self._manipulator.insert(self, lambda: self._values.add(value), value)
+        else: self._notify("set", value, default=lambda: self._values.add(value) )
+        
     def update(self, it: Iterable[Hashable]):
         for i in it: self.add(i)
     
@@ -118,22 +106,45 @@ class ManipulatorSet[T](BaseContainerType[T], mset):
         if other in self: self._notify("delete", other, default=lambda: self._values.discard(other) )
 
 
-class ManipulatorList[T](BaseContainerType[T], KeyAccess, ms):
-    #set
+class ManipulatorList[T](BaseContainerType[T], ms):
+    __slots__=("_normalize_slice",)
     __doc__=docs['manipulator']
     
-    def __init__(self, manipulator, it: Iterable[T]=() ): self._values=list(it); super().__init__(manipulator)
+    def __init__(self, manipulator, it: Iterable[T]=(), /, *, normalize_slice: bool =False): self._values, self._normalize_slice=list(it), normalize_slice; super().__init__(manipulator)
     
-    def insert(self, index: int, value): self._notify("set", value, index, default=lambda: self._values.insert(index, value) )
+    def __getitem__(self, key) ->Any:
+        if not self._normalize_slice and not isinstance(key, slice): return self._notify("get", key, default=lambda: self._values[key])
+        return [self[i] for i in range(*key.indices(len(self) ) )]
+    
+    def __setitem__(self, key, value) ->None: 
+        if not self._normalize_slice and not isinstance(key, slice): self._notify("set", value, key, default=lambda: self._values.__setitem__(key, value) )
+        else:
+            for i, v in zip(range(*key.indices(len(self) ) ), value): del self[i]; self.insert(i, v)
+    
+    def __delitem__(self, key) ->None: 
+        if not self._normalize_slice and not isinstance(key, slice): self._notify("delete", key, default=lambda: self._values.__delitem__(key) )
+        else:
+            for i in range(*key.indices(len(self) ) ): del self[i]
+    
+    def insert(self, index: int, value): 
+        if hasattr(self._manipulator, "insert"): self._manipulator.insert(self, lambda: self._values.insert(index, value), value, index)
+        else: self._notify("set", value, index, default=lambda: self._values.insert(index, value) )
         
         
-class ManipulatorDict[T, U](BaseContainerType[T], KeyAccess, mm):
-    #__slots__=("_collector",)
+class ManipulatorDict[T, U](BaseContainerType[T], mm):
     __doc__=docs['manipulator']
     
-    def __init__(self, manipulator, it: Iterable[tuple[T, U] ]=(), /, **kwargs): self._values=dict(it)|kwargs; super().__init__(manipulator)#; self._collector=None
+    def __init__(self, manipulator, it: Iterable[tuple[T, U] ]=(), /, **kwargs): self._values=dict(it)|kwargs; super().__init__(manipulator)
     
+    def __getitem__(self, key) ->Any: return self._notify("get", key, default=lambda: self._values[key])
     
+    def __setitem__(self, key, value):
+        if key not in self and hasattr(self._manipulator, "insert"): self._manipulator.insert(self, lambda: self._values.__setitem__(key, value), value, key)
+        else: self._notify("set", value, key, default=lambda: self._values.__setitem__(key, value) )    
+            
+    def __delitem__(self, key) ->None: self._notify("delete", key, default=lambda: self._values.__delitem__(key) )
+        
+         
 ##########-Manipulators-##########
 
 
@@ -212,7 +223,7 @@ class TypedM:
 
 
 @dtc(frozen=True)
-class RadioActiveM[T]:   
+class RadioActiveM:   
     #def create(self, obj): open_collector_slot(obj)
     
     def iterate(self, obj, base_action: Callable[[], T]) ->T:
@@ -233,8 +244,8 @@ class LifetimeType:
         return n
         
     def _getM(self, lifespan: int): return LifetimeM(lifespan)
-      
-    def check_lifespan(self, target: int|Hashable) ->int: return self._manipulator.items[target]
+ 
+    def get_lifespans(self) ->mpt[Hashable, int]: return mpt(self._manipulator.items)
    
     
 class SizedType: 

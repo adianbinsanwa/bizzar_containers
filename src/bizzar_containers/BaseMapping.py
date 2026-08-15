@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any, Hashable, Callable
-from dataclasses import dataclass, field;   from types import MappingProxyType as mpt
-from BaseModels import prtl, docs as bm_docs, Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
-from SubModels import docs as sm_docs,IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
+from dataclasses import dataclass, field
+from .BaseModels import mpt, prtl, docs, Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
+from .SubModels import IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
 
 dtc=prtl(dataclass, slots=True, eq=False)
 
@@ -64,7 +64,7 @@ class TypedM:
 
 
 class IndexedDict[T, U](it, md[T, U]):
-    __doc__=sm_docs['indexed']
+    __doc__=docs['indexed']
        
     @property
     def indexes(self) ->tuple[T]: return tuple(self._manipulator.key_order)
@@ -104,7 +104,7 @@ class CanonicalDict(md):
 
 
 class TypedDict(md):
-    __doc__=bm_docs['typed']
+    __doc__=docs['typed']
     
     def __init__(self, allowed_keys: tuple[type]|type, allowed_values: tuple[type]|type, /, *args, **kwargs): super().__init__(TypedM(ts(allowed_keys), ts(allowed_values) ), *args, **kwargs)
     @property
@@ -125,7 +125,7 @@ class FixSizedDict(md):
         
    
 class LifetimeDict(lt, md):
-    __doc__=bm_docs['lifetime']
+    __doc__=docs['lifetime']
     
     def setdefault(self, key: Hashable, default, lifespan: Optional[int]=None):
         if lifespan is None or key in self: return super().setdefault(key, default)
@@ -133,27 +133,27 @@ class LifetimeDict(lt, md):
 
 
 class UnaryGraphDict(ugt, md):
-    __doc__=sm_docs['unary']
+    __doc__=docs['unary']
          
 
 class BinaryGraphDict(bgt, md):
-    __doc__=sm_docs['binary']
+    __doc__=docs['binary']
     
 
 class TrinaryGraphDict(tgt, md):
-    __doc__=sm_docs['trinary']
+    __doc__=docs['trinary']
     
 
 class RadioActiveDict(rat, md):
-    __doc__=bm_docs['radioactive']
+    __doc__=docs['radioactive']
     
     
 class SizedDict(st, md):
-    __doc__=bm_docs['sized']
+    __doc__=docs['sized']
      
     
 class MemorySizedDict(mst, md):
-    __doc__=bm_docs['memorysized']
+    __doc__=docs['memorysized']
     
 
 if __name__=="__main__":

@@ -13,20 +13,20 @@ class LifetimeM:
     items: list[int]=field(init=False, default=None)
     
     def _del(self, obj, it: Iterable[Any]):
-        dead=set()
         for i in it: 
             self.items[i]-=1
-            if self.items[i] is Dead: dead.add(i)
-        for i in sorted(dead, reverse=True): del obj[i]
+            if self.items[i] is Dead: del obj[i]
         
     def create(self, obj): self.items=[self.lifespan]*len(obj)
     
-    def iterate(self, obj, base_action: Callable[[], T]) ->T: it=iter(obj._values.copy() ); self._del(obj, range(len(obj) ) ); return it
+    def iterate(self, obj, base_action: Callable[[], T]) ->T: it=iter(obj._values.copy() ); self._del(obj, reversed(range(len(obj) ) ) ); return it
     
-    def get(self, obj, base_action: Callable[[], T], key: int|slice) ->T: val=base_action(); self._del(obj, range(*key.indices(len(obj) ) ) if isinstance(key, slice) else (key,) ); return val
+    def get(self, obj, base_action: Callable[[], T], key: int|slice) ->T: val=base_action(); self._del(obj, reversed(range(*key.indices(len(obj) ) ) ) if isinstance(key, slice) else (key,) ); return val
     
     def set(self, obj, base_action: Callable[[], None], value, key: int|slice): base_action(); self.items[key]=([self.lifespan]*len(value) ) if isinstance(key, slice) else self.lifespan
-  #same  
+    
+    def insert(self, obj, base_action: Callable[[], None], value, key: int|slice): base_action(); self.items.insert(key, self.lifespan)
+    
     def delete(self, obj, base_action: Callable[[], None], key: int|slice): base_action(); del self.items[key]
 
 

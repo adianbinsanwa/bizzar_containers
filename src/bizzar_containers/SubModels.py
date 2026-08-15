@@ -1,29 +1,12 @@
-from typing import Any, TypeVar, Iterator, Iterable, Hashable, Optional, Callable
+from __future__ import annotations
+from typing import Any, Iterator, Iterable, Hashable, Optional, Callable
 from dataclasses import dataclass, field;   from types import MappingProxyType as mpt
-from BaseModels import T, missing, prtl, ManipulatorSet as ms
+from .BaseModels import T, missing, prtl, ManipulatorSet as mset
 
 dtc=prtl(dataclass, slots=True, eq=False)
 
 
-docs={
-'unary':"""UnaryGraphType is the first version of Graph type. it enforces one way connection between items like: parent --> child.
-a sub-child= child's child, a super-parent= parent's parent
-
-a child/sub-child cannot take it's parent/super-patent as it's own child.
-when a item dies/gets removed, all of it childs and sub-childs would die regardless of the fact that they have other parents""",
-        
-'binary':"""BinaryGraphType is the sequal of UnaryGraphType. it enforces tow way connection between items like:- item <-> item
-everything else is same as UnaryGraphType""",
-         
-'trinary':"""TrinaryGraphType is the sequal of BinaryGraphType. it enforces a fake three way connection between items like:-  neibours of 1:-(3,5,7,9), neibours of 0:-(2,4,6,8,10), new_link(0, 1)=(0,1,2,3,4,5,6,7,8,9,10).
- each new link makes so that if a is reachable from c via b, then a must be reachable from c directly too.
- essentially it performs cluster linking""",
-          
-'indexed':"""IndexedType tracks items's insertion order. and you can access them via their index""",
-}
-
 class LinkError(Exception): pass
-
 
 @dtc
 class BaseNodeM:
@@ -88,7 +71,7 @@ class TrinaryNodeM(BinaryNodeM):
             for n2 in (self.links[b] | {b}): self._bare_connect(n1, n2)
 
 
-@dtc(slots=True, eq=False)
+@dtc
 class IndexedM:
     key_order: list[Hashable]=field(init=False, default=None)
     
@@ -101,7 +84,7 @@ class IndexedM:
     def delete(self, obj, base_action: Callable[[], None], key: Hashable):
         if key in self.key_order: self.key_order.pop(self.key_order.index(key) )
         base_action()
-     
+
 
 ##########-invariant types-##########    
 
@@ -110,10 +93,10 @@ class BaseGraphType:
     def __init__(self, *args, links: dict[Hashable, Iterable[Hashable] ]={}, **kwargs): super().__init__(self._getM(), *args, **kwargs); self.new_link(links)
     
     def _set(self, val):
-        if isinstance(self, ms): self.update(val); return
+        if isinstance(self, mset): self.update(val); return
         for k,v in val.items(): self[k]=v 
     
-    def _del(self, val): getattr(self, 'discard' if isinstance(self, ms) else 'pop')(val)
+    def _del(self, val): getattr(self, 'discard' if isinstance(self, mset) else 'pop')(val)
     
     def new_link(self, links: dict[Hashable, Iterable[Hashable] ]):
         for parent, childs in links.items():
@@ -139,6 +122,8 @@ class TrinaryGraphType(BaseGraphType):
 class IndexedType:
     def __init__(self, *args, **kwargs): super().__init__(IndexedM(), *args, **kwargs)
         
-        
- 
+
+if __name__=="__main__":
+    ...
     
+ 
