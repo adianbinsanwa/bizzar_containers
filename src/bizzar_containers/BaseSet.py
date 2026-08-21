@@ -1,13 +1,53 @@
 from __future__ import annotations
-from typing import Any, Callable, Iterator, Hashable;   from itertools import pairwise as prws
+from typing import Any, Self, Callable, Iterator, Hashable
 #from dataclasses import dataclass, field
-from .BaseModels import docs, ManipulatorSet as ms, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
-from .SubModels import IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
+from .BaseModels import (docs, 
 
+ManipulatorSet as ms, ManipulatorFrozenSet as mfs, SizedType as st, TypedType as tt,
+MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt, GroupType as gt)
+
+from .SubModels import IndexedFrozenType as ifs, IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
 
 
 ##########-set families-##########
 
+
+class GroupSet(gt, ms):
+    __doc__=docs["group"]
+    
+    def _trackIndex(self, data): return IndexedSet(data)
+    
+    def new_groups(self, **groups) ->Self:
+        for name, members in groups.items():
+            self._check_grp_not_exists(name); self._check_members(members); self._get_groups.setdefault(name, set(self.order()[i] for i in members) )
+        return self
+        
+    def change_members(self, target, new_members: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target]=set(self.order()[i] for i in new_members)
+    
+    def add_members(self, target: str, new_nembers: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target].update(self.order()[i] for i in new_members)
+    
+    def free_group(self, target: str): self._error_for_nonexisting_grp(target); self._get_groups[target].clear() 
+    
+    def order(self) ->tuple[T]: return tuple(self._values._manipulator.key_order)            
+     
+
+class GroupFrozenSet(gt, mfs):
+    __doc__=docs["group"]
+    
+    def _trackIndex(self, data): return IndexedFrozenSet(data)
+    
+    def new_groups(self, **groups) ->Self:
+        for name, members in groups.items():
+            self._check_grp_not_exists(name); self._check_members(members); self._get_groups.setdefault(name, frozenset(self.order()[i] for i in members) )
+        return self
+        
+    def change_members(self, target, new_members: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target]=frozenset(self.order()[i] for i in new_members)
+    
+    def order(self) ->tuple[T]: return tuple(self._values._manipulator.key_order)        
+    
 
 class LifetimeSet(lt, ms):   
     __doc__=docs['lifetime']
@@ -26,6 +66,12 @@ class IndexedSet[T](it, ms[T]):
     def order(self) ->tuple[T]: return tuple(self._manipulator.key_order)
         
         
+class IndexedFrozenSet[T](ifs, mfs[T]):   
+    __doc__=docs['indexed']
+     
+    def order(self) ->tuple[T]: return tuple(self._manipulator.key_order)        
+        
+        
 class RadioActiveSet(rat, ms):
     __doc__=docs['radioactive']
     
@@ -39,27 +85,27 @@ class SizedSet(st, ms):
     
 
 class TypedSet(tt, ms):
-    __doc__=bm_docs['typed']
+    __doc__=docs['typed']
     
     def _from_iterable(self, res): return type()(self.allowed_types, res)
     
     
 class MemorySizedSet(mst, ms):
-    __doc__=bm_docs['memorysized']
+    __doc__=docs['memorysized']
     
     def _from_iterable(self, res): return type(self)(self.capacity, res)
-
+    
 
 class UnaryGraphSet(ugt, ms):
-    __doc__=sm_docs['unary']
+    __doc__=docs['unary']
                 
         
 class BinaryGraphSet(bgt, ms):
-    __doc__=sm_docs['binary']
+    __doc__=docs['binary']
     
     
 class TrinaryGraphSet(tgt, ms):
-    __doc__=sm_docs['trinary']
+    __doc__=docs['trinary']
  
 
 def f(s):
@@ -73,7 +119,6 @@ def f1(s, funcs: Itreable[Callable[[Any], None] ]):
 
 
 if __name__=="__main__":
-    r=UnaryGraphSet(range(10), links={a:{b} for a,b in prws([0,2,4,6,8])}|{a:{b} for a,b in prws([1,3,5,7,9])})
-    print(r.__doc__)
-    f1(r, [lambda x: None, lambda x: x.new_link({0:{1}}), lambda x: x.remove(9) ])
+    r=GroupFrozenSet("1234567890")
+    print(r, r.groups)
     

@@ -14,6 +14,7 @@ everything else is same as UnaryGraphType""",
           
 'indexed':"""IndexedType tracks items's insertion order. and you can access them via their index""",
 
+'group':"""<empty for further notice>""",
 
 'sized':"""Sized containers takes and enforces a size range. the container would never exceed this range.""",
 

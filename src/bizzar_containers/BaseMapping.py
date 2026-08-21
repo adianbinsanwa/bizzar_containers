@@ -1,10 +1,26 @@
 from __future__ import annotations
-from typing import Any, Hashable, Callable
-from dataclasses import dataclass, field
-from .BaseModels import mpt, prtl, docs, Typed_simplifier as ts, ManipulatorDict as md, SizedType as st, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
-from .SubModels import IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
+from typing import Any, Self, Hashable, Callable, Optional
+from dataclasses import dataclass, field, FrozenInstanceError as fis
+from .BaseModels import (mpt, prtl, docs, 
 
-dtc=prtl(dataclass, slots=True, eq=False)
+Typed_simplifier as ts, ManipulatorDict as md, ManipulatorFrozenDict as mfd, SizedType as st,
+MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt, GroupType as gt)
+
+from .SubModels import IndexedFrozenType as ift, IndexedType as it, UnaryGraphType as ugt, BinaryGraphType as bgt, TrinaryGraphType as tgt
+
+dtc=prtl(dataclass, slots=True, eq=False, repr=False)
+
+
+@dtc(frozen=True, repr=True)
+class Member:
+    members: frozenset[Hashable]
+    metadata: Optional[Any]=field(default=None)
+    
+    def __contains__(self, target): return target in self.members
+    
+    @classmethod
+    def new_member(cls, *args): return cls(*args) 
+    
 
 ##########-Manipulators-##########
 
@@ -60,24 +76,40 @@ class TypedM:
         base_action()
 
 
+##########-Private_Types-##########
+
+class GroupDictType:
+    def _new_member(self, target, *args): self._get_groups[target]=Member(*args)
+    
+    def key_at(self, index):
+        try: return self._values.key_at(index)
+        except IndexError as ie: raise IndexError(f"{type(self).__name__} index out of range") from None
+    
+    def change_group_metadata(self, target, new_metadata): self._check_grp_exists(target); self._new_member(target, self._get_groups[target].members, new_metadata)
+    
+    def value_at(self, index): return self._values.value_at(index)
+    
+    def item_at(self, index): return self._values.item_at(index)
+    
+    def indexes(self): return self._values.indexs
+    
+
+class IndexedDictType:
+    def key_at(self, index: int) ->Hashable:
+        try: return self._manipulator.key_order[index]
+        except IndexError as ie: raise IndexError(f"{type(self).__name__} index out of range") from None
+
+    @property
+    def indexes(self) ->tuple[Hashable]: return tuple(self._manipulator.key_order)
+     
+    def value_at(self, index: int) ->Any: return self[self.key_at(index)]
+    
+    def item_at(self, index: int) ->dict[Hashable, Any]: return {self.key_at(index): self.value_at(index)}
+    
+
 ##########-dict families-##########
 
 
-class IndexedDict[T, U](it, md[T, U]):
-    __doc__=docs['indexed']
-       
-    @property
-    def indexes(self) ->tuple[T]: return tuple(self._manipulator.key_order)
-     
-    def value_at(self, index: int) ->U: return self[self.key_at(index)]
-    
-    def item_at(self, index: int) ->dict[T, U]: return {self.key_at(index): self.value_at(index)}
-    
-    def key_at(self, index: int) ->T:
-        try: return self._manipulator.key_order[index]
-        except IndexError as ie: raise IndexError(f"{type(self).__name__} index out of range") from None
-            
-            
 class DualValueDict[T, U](md[T, U]):
     """DualValueDict is an inferior version of MultiValueDict. instead of multiple values it only provides one extra value slot
        meaning each key can have only two values. on normal access, set, delete you're only interacting with the mani value.
@@ -132,6 +164,14 @@ class LifetimeDict(lt, md):
         self._values[key]=default; self._manipulator.items[key]=self._lifespan_is_valid(lifespan); return default
 
 
+class IndexedDict(it, md, IndexedDictType):
+    __doc__=docs['indexed']
+   
+    
+class IndexedFrozenDict(ift, mfd, IndexedDictType):
+    __doc__=docs['indexed']
+    
+    
 class UnaryGraphDict(ugt, md):
     __doc__=docs['unary']
          
@@ -148,17 +188,52 @@ class RadioActiveDict(rat, md):
     __doc__=docs['radioactive']
     
     
-class SizedDict(st, md):
-    __doc__=docs['sized']
-     
-    
 class MemorySizedDict(mst, md):
     __doc__=docs['memorysized']
     
 
-if __name__=="__main__":
-    pr=BinaryGraphDict({8:9,0:55,776:8}, gg=77, links={8: {0}})
+class SizedDict(st, md):
+    __doc__=docs['sized']
+ 
+ 
+class GroupDict(GroupDictType, gt, md):
+    __doc__=docs["group"]
     
-    print(pr, pr.metadata())
+    def _trackIndex(self, data): return IndexedDict(data)
+    
+    def new_groups(self, **groups) ->Self:
+        for name, members in groups.items():
+            self._check_grp_not_exists(name); self._check_members(members); self._manipulator.groups.setdefault(name, Member(frozenset(self.key_at(i) for i in members) ) )
+        return self
+    
+    def add_members(self, target: str, new_nembers: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members)
+        self._new_member(target, self._get_groups[target].members | frozenset(self.key_at(i) for i in new_members), self._get_groups[target].metadata)
+    
+    def change_members(self, target, new_members: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._new_member(target, frozenset(self.key_at(i) for i in new_members), self._get_groups[target].metadata)
+    
+    def free_group(self, target: str): self._check_grp_exists(target); self._new_member(target, frozenset(), self._get_groups[target].metadata)
+        
+
+class GroupFrozenDict(GroupDictType, gt, mfd):
+    __doc__=docs["group"]
+    
+    def _trackIndex(self, data): return IndexedFrozenDict(data)
+    
+    def new_groups(self, **groups) ->Self:
+        for name, members in groups.items():
+            self._check_grp_not_exists(name); self._check_members(members); self._get_groups.setdefault(name, Member(frozenset(self.key_at(i) for i in members) ) )
+        return self
+        
+    def change_members(self, target, new_members: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._new_member(target, frozenset(self.key_at(i) for i in new_members), self._get_groups[target].metadata)
+    
+
+if __name__=="__main__":
+    pr=GroupDict({8:9,0:55,776:8}, gg=77, links={8: {0}})
+    pr.new_group("asshole_metadata", asshole={1,2,3})
+    pr.free_group("asshole")
+    print(pr, pr.groups)
     
 

@@ -44,7 +44,7 @@ class BaseContainerType[T]:
     #base container ops
     def __eq__(self, other): return self._values == other if not hasattr(other, '_values') else other._values
     
-    def __repr__(self) ->str: return f"{type(self).__name__}({self._values})"
+    def __repr__(self) ->str: r=repr(self._values); return f"{type(self).__name__}({r if isinstance(self._values, (list, set, dict, tuple) ) else r[r.index('(')+1:-1]})"
     
     def __iter__(self) ->Iterator[T]: return self._notify("iterate", default= lambda: iter(self._values) )
     
@@ -61,12 +61,6 @@ class BaseContainerType[T]:
 ##########-Manipulator family-##########
 
 #immutables
-class ManipulatorFrozenSet[T](BaseContainerType[T], fset):
-    __doc__=docs['manipulator']
-    
-    def __init__(self, manipulator, it: Iterable[Hashable]=() ): self._values=frozenset(it); super().__init__(manipulator)
-    
-
 class ManipulatorTuple[T](BaseContainerType[T], fs):
     __slots__=("_normalize_slice",)
     __doc__=docs['manipulator']
@@ -81,13 +75,40 @@ class ManipulatorTuple[T](BaseContainerType[T], fs):
 class ManipulatorFrozenDict[T, U](BaseContainerType[T], fm):
     __doc__=docs['manipulator']
     
-    def __init__(self, manipulator, it: Iterable[tuple[T, U] ]=(), /, **kwargs): self._values=mpt(dict(it)|kwargs ); super().__init__(manipulator)
+    def __init__(self, manipulator, it: Iterable[tuple[T, U] ]=(), /, **kwargs): self._values=mpt({k:v for k,v in (dict(it)|kwargs).items()} ); super().__init__(manipulator)
     
     def __getitem__(self, key) ->Any: return self._notify("get", key, default=lambda: self._values[key])
     
-
+class ManipulatorFrozenSet[T](BaseContainerType[T], fset):
+    __doc__=docs['manipulator']
+    
+    def __init__(self, manipulator, it: Iterable[Hashable]=() ): self._values=frozenset(it); super().__init__(manipulator)
+    
 
 #mutables
+class ManipulatorList[T](BaseContainerType[T], ms):
+    __slots__=("_normalize_slice",)
+    __doc__=docs['manipulator']
+    
+    def __init__(self, manipulator, it: Iterable[T]=(), /, *, normalize_slice: bool =False): self._values, self._normalize_slice=list(it), normalize_slice; super().__init__(manipulator)
+    
+    def __getitem__(self, key) ->Any:
+        if not self._normalize_slice and not isinstance(key, slice): return self._notify("get", key, default=lambda: self._values[key])
+        return [self[i] for i in range(*key.indices(len(self) ) )]
+    
+    def __setitem__(self, key, value) ->None: 
+        if not self._normalize_slice and not isinstance(key, slice): self._notify("set", value, key, default=lambda: self._values.__setitem__(key, value) ); return
+        for i, v in zip(range(*key.indices(len(self) ) ), value): del self[i]; self.insert(i, v)
+    
+    def __delitem__(self, key) ->None: 
+        if not self._normalize_slice and not isinstance(key, slice): self._notify("delete", key, default=lambda: self._values.__delitem__(key) ); return
+        for i in range(*key.indices(len(self) ) ): del self[i]
+    
+    def insert(self, index: int, value): 
+        if hasattr(self._manipulator, "insert"): self._manipulator.insert(self, lambda: self._values.insert(index, value), value, index)
+        else: self._notify("set", value, index, default=lambda: self._values.insert(index, value) )
+
+
 class ManipulatorSet[T](BaseContainerType[T], mset):
     #set
     __doc__=docs['manipulator']
@@ -106,31 +127,6 @@ class ManipulatorSet[T](BaseContainerType[T], mset):
         if other in self: self._notify("delete", other, default=lambda: self._values.discard(other) )
 
 
-class ManipulatorList[T](BaseContainerType[T], ms):
-    __slots__=("_normalize_slice",)
-    __doc__=docs['manipulator']
-    
-    def __init__(self, manipulator, it: Iterable[T]=(), /, *, normalize_slice: bool =False): self._values, self._normalize_slice=list(it), normalize_slice; super().__init__(manipulator)
-    
-    def __getitem__(self, key) ->Any:
-        if not self._normalize_slice and not isinstance(key, slice): return self._notify("get", key, default=lambda: self._values[key])
-        return [self[i] for i in range(*key.indices(len(self) ) )]
-    
-    def __setitem__(self, key, value) ->None: 
-        if not self._normalize_slice and not isinstance(key, slice): self._notify("set", value, key, default=lambda: self._values.__setitem__(key, value) )
-        else:
-            for i, v in zip(range(*key.indices(len(self) ) ), value): del self[i]; self.insert(i, v)
-    
-    def __delitem__(self, key) ->None: 
-        if not self._normalize_slice and not isinstance(key, slice): self._notify("delete", key, default=lambda: self._values.__delitem__(key) )
-        else:
-            for i in range(*key.indices(len(self) ) ): del self[i]
-    
-    def insert(self, index: int, value): 
-        if hasattr(self._manipulator, "insert"): self._manipulator.insert(self, lambda: self._values.insert(index, value), value, index)
-        else: self._notify("set", value, index, default=lambda: self._values.insert(index, value) )
-        
-        
 class ManipulatorDict[T, U](BaseContainerType[T], mm):
     __doc__=docs['manipulator']
     
@@ -143,8 +139,8 @@ class ManipulatorDict[T, U](BaseContainerType[T], mm):
         else: self._notify("set", value, key, default=lambda: self._values.__setitem__(key, value) )    
             
     def __delitem__(self, key) ->None: self._notify("delete", key, default=lambda: self._values.__delitem__(key) )
+                
         
-         
 ##########-Manipulators-##########
 
 
@@ -195,7 +191,6 @@ class SizedM:
     def capacity(self) ->tuple[int, int]: return self.min_size, self.max_size
 
 
-
 class MemorySizedM(SizedM):
     """MemorySizedManipulator is a manipulator for MemorySizedType conatiners."""
     
@@ -222,18 +217,54 @@ class TypedM:
         base_action()
 
 
+@dtc
+class GroupM:
+    groups: dict[str, Iterable[Any] ]=field(init=False, default_factory=dict)
+    
+    def delete(self, obj, base_action, key):
+        base_action()
+        for v in self.groups.values():
+            if key in v: v.remove(key)
+    
+
 @dtc(frozen=True)
 class RadioActiveM:   
     #def create(self, obj): open_collector_slot(obj)
     
     def iterate(self, obj, base_action: Callable[[], T]) ->T:
-        rand=((r(), i) for i in (obj._values if not isinstance(obj, ManipulatorList) else range(len(obj) ) ) )
+        rand=((r(), i) for i in obj._get() )
         if len(obj) > 0 and (r() >= (high:= max(rand, key=lambda x: x[0]) )[0] >= r() ): it=iter(obj._values.copy() ); obj._del(high[1]); return it
         return base_action()
 
 
 ##########-invariant types-##########    
 
+
+class GroupType:
+    def __init__(self, *args, **kwargs): super().__init__(GroupM(), *args, **kwargs); self._values=self._trackIndex(self._values)
+    
+    def _check_members(self, members):
+        for i in members:
+            if i >=len(self): raise IndexError(f"{type(self).__name__} index out of range")
+    
+    def _check_grp_not_exists(self, name):
+        if name in self._get_groups: raise ValueError(f"cannot override existing group '{name}': use '.change()' to override a group")
+    
+    def _check_grp_exists(self, name):
+        if name not in self._get_groups: raise ValueError(f"invalid group name: '{target}' notfound")
+    @property
+    def _get_groups(self): return self._manipulator.groups
+    
+    def discard_group(self, target):
+        if target in self.groups: del self.manipulator.groups[target]
+    
+    def remove_group(self, target: str): self._error_for_nonexisting_grp(target); del self._get_groups[target]
+    
+    @property
+    def groups(self) ->mpt[str, Iterable[Any] ]: return mpt(self._get_groups)
+    
+    def clear_groups(self): self._get_groups.clear()
+ 
 
 class LifetimeType:
     def __init__(self, lifespan: int, *args, **kwargs): super().__init__(self._getM(self._lifespan_is_valid(lifespan) ), *args, **kwargs)
@@ -256,10 +287,6 @@ class SizedType:
     def capacity(self) ->tuple[int, int]: return self._manipulator.capacity
 
 
-class MemorySizedType(SizedType): 
-    def _getM(self, *size): return MemorySizedM(*size)
-
-
 class TypedType:
     def __init__(self, allowed_types: type|tuple[type], /, *args, **kwargs): super().__init__(TypedM(Typed_simplifier(allowed_types) ), *args, **kwargs) 
     @property
@@ -270,7 +297,13 @@ class RadioActiveType:
     def __init__(self, *args, **kwargs): super().__init__(RadioActiveM(), *args, **kwargs)
     
     def _del(self, target): del self[target]
-   
+    
+    def _get(self): return self._values
+    
+
+class MemorySizedType(SizedType): 
+    def _getM(self, *size): return MemorySizedM(*size)
+
      
 if __name__=="__main__":
     ...

@@ -3,35 +3,49 @@ from types import MappingProxyType as mpt
 from .BaseModels import (
 
 ManipulatorList, ManipulatorSet, ManipulatorDict,
-ManipulatorTuple, ManipulatorFrozenSet, ManipulatorFrozenDict
+ManipulatorTuple, ManipulatorFrozenSet, ManipulatorFrozenDict,
 ManipulatorProtocol)
 
 
 from .BaseSequence import (
 
 TypedList, SizedList, MemorySizedList,
-RadioActiveList, LifetimeList, HideSeekList)
+RadioActiveList, LifetimeList, HideSeekList,
+GroupTuple)
 
 
 from .BaseSet import (
 
-TypedSet, SizedSet, MemorySizedSet,
+TypedSet, SizedSet, GroupSet, MemorySizedSet,
 IndexedSet, RadioActiveSet, LifetimeSet,
-UnaryGraphSet, BinaryGraphSet, TrinaryGraphSet)
+UnaryGraphSet, BinaryGraphSet, TrinaryGraphSet,
+IndexedFrozenSet, GroupFrozenSet)
 
 
 from .BaseMapping import (
 
-TypedDict, SizedDict, MemorySizedDict,
+TypedDict, SizedDict, GroupDict, MemorySizedDict,
 RadioActiveDict, LifetimeDict, IndexedDict,
-CanonicalDict, FixSizedDict, DualValueDict,
-UnaryGraphDict, BinaryGraphDict, TrinaryGraphDict)
+CanonicalDict, FixSizedDict, DualValueDict, 
+UnaryGraphDict, BinaryGraphDict, TrinaryGraphDict,
+IndexedFrozenDict, GroupFrozenDict)
 
+#family hierarchy
+#will recive their own *name*Comtainers:
+    #main:- family whom implements in all 3 types and their immutable counterparts
+    #majot:- family whom implements only in the 3 types
+#else:
+    #minor:- family whom implements 2/3 types
+    #sub:- family whom is implements 1 type
 
 
 #families as as invariants
-ManipulatorContainers=mpt({list: ManipulatorList, dict: ManipulatorDict, set: ManipulatorSet
+ManipulatorContainers=mpt({list: ManipulatorList, dict: ManipulatorDict, set: ManipulatorSet,
                            tuple: ManipulatorTuple, mpt: ManipulatorFrozenDict, frozenset: ManipulatorFrozenSet})
+
+
+GroupContiners=mpt({tuple: GroupTuple, set: GroupSet, frozenset: GroupFrozenSet, 
+                    dict: GroupDict, mpt: GroupFrozenDict})
 
 TypedContainers=mpt({list: TypedList, dict: TypedDict, set: TypedSet})
 
@@ -46,25 +60,37 @@ LifetimeContainers=mpt({list: LifetimeList, dict: LifetimeDict, set: LifetimeSet
 
 #families as types
 sequence_types=mpt({
-'Manipulator': ManipulatorList, 'Sized': SizedList, 'Typed': TypedList, 'MemorySized': MemorySizedList,
-'RadioActive': RadioActiveList, 'Lifetime': LifetimeList, 'HideSeek': HideSeekList,
-'Immutable': ManipulatorTuple,         
+'mutable': mpt({'Manipulator': ManipulatorList, 'Sized': SizedList, 'Typed': TypedList, 'MemorySized': MemorySizedList,
+           'RadioActive': RadioActiveList, 'Lifetime': LifetimeList, 'HideSeek': HideSeekList,
+           }),      
+           
+'Immutable': mpt({"Manipulator": ManipulatorTuple, "Group": GroupTuple,
+           }),         
 })
 
 
 set_types=mpt({
-'Manipulator': ManipulatorSet, 'Sized': SizedSet, 'Typed': TypedSet, 'MemorySized': MemorySizedSet,
-'RadioActive': RadioActiveSet, 'Lifetime': LifetimeSet, 'Indexed': IndexedSet,
-'Graph': mpt({'Unary': UnaryGraphSet, 'Binary': BinaryGraphSet, 'Trinary': TrinaryGraphSet}),
-'Immutable': ManipulatorFrozenSet
+'mutable': mpt({'Manipulator': ManipulatorSet, 'Sized': SizedSet, 'Typed': TypedSet, 'MemorySized': MemorySizedSet,
+            'RadioActive': RadioActiveSet, 'Lifetime': LifetimeSet, 'Indexed': IndexedSet,
+            
+            'Graph': mpt({'Unary': UnaryGraphSet, 'Binary': BinaryGraphSet, 'Trinary': TrinaryGraphSet}),
+           }),     
+           
+'Immutable': mpt({"Manipulator": ManipulatorFrozenSet, "Indexed": IndexedFrozenSet, "Group": GroupFrozenSet,
+           }),
 })
 
 
 mapping_types=mpt({
-'Manipulator': ManipulatorDict, 'Sized': SizedDict, 'Typed': TypedDict, 'MemorySized': MemorySizedDict,
-'Lifetime': LifetimeDict, 'Indexed': IndexedDict, 'Canonical': CanonicalDict, 'DualValue': DualValueDict, 
-'FixSized': FixSizedDict, 'Graph': mpt({'Unary': UnaryGraphDict, 'Binary': BinaryGraphDict, 'Trinary': TrinaryGraphDict}),
-'Immutable': ManipulatorFrozenDict
+'mutable': mpt({'Manipulator': ManipulatorDict, 'Sized': SizedDict, 'Typed': TypedDict, 'MemorySized': MemorySizedDict,
+            'RadioActive': RadioActiveDict,'Lifetime': LifetimeDict, 'Indexed': IndexedDict, 'Canonical': CanonicalDict,
+            'DualValue': DualValueDict, 'FixSized': FixSizedDict,
+            
+            'Graph': mpt({'Unary': UnaryGraphDict, 'Binary': BinaryGraphDict, 'Trinary': TrinaryGraphDict}),
+           }),
+           
+'Immutable': mpt({"Manipulator": ManipulatorFrozenDict, "Indexed": IndexedFrozenDict, "Group": GroupFrozenDict,
+           }),
 })
 
 
@@ -89,16 +115,18 @@ __all__=[#types
          
          #lists
          "ManipulatorList",
-         "ManipulatorTuple",
          "SizedList",
          "TypedList",
          "MemorySizedList",
          "RadioActiveList",
          "HideSeekList",
          
+         #tuples
+         "ManipulatorTuple",
+         "GroupTuple",
+         
          #sets
          "ManipulatorSet",
-         "ManipulatorFrozenSet",
          "SizedSet", 
          "TypedSet",
          "MemorySizedSet",
@@ -109,9 +137,13 @@ __all__=[#types
          "BinaryGraphSet",
          "TrinaryGraphSet",
          
+         #frozensets
+         "ManipulatorFrozenSet",
+         "IndexedFrozenSet",
+         "GroupFrozenSet",
+         
          #dicts
          "ManipulatorDict",
-         "ManipulatorFrozenDict",
          "SizedDict",
          "TypedDict",
          "MemorySizedDict",
@@ -125,7 +157,14 @@ __all__=[#types
          "BinaryGraphDict",
          "TrinaryGraphDict",
          
+         #frozendicts
+         "ManipulatorFrozenDict",
+         "IndexedFrozenDict",
+         "GroupFrozenDict",
+         
          #others
          "ManipulatorProtocol",
          "convert",
          ]
+         
+__version__="1.4.0"

@@ -86,6 +86,13 @@ class IndexedM:
         base_action()
 
 
+@dtc
+class IndexedFrozenM:
+    key_order: tuple[Hashable]=field(init=False, default=None)
+    
+    def create(self, obj): self.key_order=tuple(i for i in obj)
+
+
 ##########-invariant types-##########    
 
 
@@ -122,6 +129,10 @@ class TrinaryGraphType(BaseGraphType):
 class IndexedType:
     def __init__(self, *args, **kwargs): super().__init__(IndexedM(), *args, **kwargs)
         
+        
+class IndexedFrozenType: 
+    def __init__(self, *args, **kwargs): super().__init__(IndexedFrozenM(), *args, **kwargs)
+ 
 
 if __name__=="__main__":
     ...

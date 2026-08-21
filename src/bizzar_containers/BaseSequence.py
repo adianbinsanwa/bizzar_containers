@@ -1,7 +1,11 @@
 from __future__ import annotations
-from typing import Any, Iterator, Optional, Callable
+from typing import Any, Self, Iterator, Optional, Callable
 from dataclasses import dataclass, field;   from random import randint as rint
-from .BaseModels import T, prtl, Dead, docs as bm_docs, ManipulatorList as ml, SizedType as st, TypedType as tt, MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt
+from .BaseModels import (T, prtl, Dead, docs,
+
+ManipulatorList as ml, ManipulatorTuple as mt, SizedType as st, TypedType as tt,
+MemorySizedType as mst, RadioActiveType as rat, LifetimeType as lt, GroupType as gt)
+
 #from .SubModels import 
 
 dtc=prtl(dataclass, slots=True, eq=False)
@@ -46,17 +50,11 @@ class HideSeekM:
     def delete(self, obj, base_action: Callable[[], None], key: int|slice): base_action(); self._jump(len(obj) )
 
 
-class HideSeekList(ml):
-    """HideSeekList implements the base idea of hide→seek. it has an internal pointer=the hider.
-       on each (non iterative) element access it'll throw the pointer to a random spot.
-       if the next access index ==hider's pos → it'll pop that item before repeating the cycle until the list is empty
-    """
-    
-    def __init__(self, *args, **kwargs): super().__init__(HideSeekM(), *args, **kwargs)
-        
-        
+##########-Manipulators-##########
+
+
 class LifetimeList(lt, ml):
-    __doc__=bm_docs['lifetime']
+    __doc__=docs['lifetime']
     
     def _getM(self, lifespan): return LifetimeM(lifespan)
     
@@ -67,29 +65,52 @@ class LifetimeList(lt, ml):
     def insert(self, index: int, value, lifespan: Optional[int]=None):
         if lifespan is None: super().insert(index, value)
         else: self._values.insert(index, value); self._manipulator.items.insert(index, self._lifespan_is_valid(lifespan) )
+            
     
+class HideSeekList(ml):
+    """HideSeekList implements the base idea of hide→seek. it has an internal pointer=the hider.
+       on each (non iterative) element access it'll throw the pointer to a random spot.
+       if the next access index ==hider's pos → it'll pop that item before repeating the cycle until the list is empty
+    """
     
+    def __init__(self, *args, **kwargs): super().__init__(HideSeekM(), *args, **kwargs)
+            
       
 class RadioActiveList(rat, ml):
-    __doc__=bm_docs['radioactive']
+    __doc__=docs['radioactive']
+    
+    def _get(self): return range(len(self) )
     
 
 class SizedList(st, ml):
-    __doc__=bm_docs['sized']
+    __doc__=docs['sized']
     
 
 class TypedList(tt, ml):
-    __doc__=bm_docs['typed']
+    __doc__=docs['typed']
     
     
 class MemorySizedList(mst, ml):
-    __doc__=bm_docs['memorysized']
+    __doc__=docs['memorysized']
+    
+    
+class GroupTuple(gt, mt):
+    __doc__=docs["group"]
+    
+    def _trackIndex(self, data): return data
+    
+    def new_groups(self, **groups) ->Self:
+        for name, members in groups.items():
+            self._check_grp_not_exists(name); self._check_members(members); self._manipulator.groups.setdefault(name, tuple(self[i] for i in members) )
+        return self
+        
+    def change_members(self, target, new_members: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._manipulator.groups[target]=tuple(self[i] for i in new_members)
+    
     
 
-
 if __name__=="__main__":
-    d=RadioActiveList((8,56,66,7,6,6,665,44,877,44) )
-    print(d[2])
-    for r in range(90):
-        for i in d: print(i)
-    print(list(d), d)
+    d=GroupTuple( (8,56,66,7,6,6,665,44,877,44) )
+    d.new_group(name=(2,4,3,5,5) )
+
+    print(d.groups)
