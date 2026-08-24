@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bizzar_containers"
+version = "0.1.0"
+description = "An experimental Python container library focused on custom invariants."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+
+authors = [
+    { name = "Abdullah", email="adianbinsanwar@gmail.com" }
+]
+
+keywords = [
+    "containers",
+    "collections",
+    "data-structures",
+    "experimental",
+    "python"
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = ["pympler>=1.1"]
+
+[project.urls]
+Homepage = "https://github.com/adianbinsanwa/bizzar_containers"
+Repository = "https://github.com/adianbinsanwa/bizzar_containers"
+Issues = "https://github.com/adianbinsanwa/bizzar_containers/issues"
+
+[tool.setuptools]
+packages = ["bizzar_containers"]
