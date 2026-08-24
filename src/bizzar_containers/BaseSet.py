@@ -12,43 +12,6 @@ from .SubModels import IndexedFrozenType as ifs, IndexedType as it, UnaryGraphTy
 ##########-set families-##########
 
 
-class GroupSet(gt, ms):
-    __doc__=docs["group"]
-    
-    def _trackIndex(self, data): return IndexedSet(data)
-    
-    def new_groups(self, **groups) ->Self:
-        for name, members in groups.items():
-            self._check_grp_not_exists(name); self._check_members(members); self._get_groups.setdefault(name, set(self.order()[i] for i in members) )
-        return self
-        
-    def change_members(self, target, new_members: Iterable[int]):
-        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target]=set(self.order()[i] for i in new_members)
-    
-    def add_members(self, target: str, new_nembers: Iterable[int]):
-        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target].update(self.order()[i] for i in new_members)
-    
-    def free_group(self, target: str): self._error_for_nonexisting_grp(target); self._get_groups[target].clear() 
-    
-    def order(self) ->tuple[T]: return tuple(self._values._manipulator.key_order)            
-     
-
-class GroupFrozenSet(gt, mfs):
-    __doc__=docs["group"]
-    
-    def _trackIndex(self, data): return IndexedFrozenSet(data)
-    
-    def new_groups(self, **groups) ->Self:
-        for name, members in groups.items():
-            self._check_grp_not_exists(name); self._check_members(members); self._get_groups.setdefault(name, frozenset(self.order()[i] for i in members) )
-        return self
-        
-    def change_members(self, target, new_members: Iterable[int]):
-        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target]=frozenset(self.order()[i] for i in new_members)
-    
-    def order(self) ->tuple[T]: return tuple(self._values._manipulator.key_order)        
-    
-
 class LifetimeSet(lt, ms):   
     __doc__=docs['lifetime']
     
@@ -106,7 +69,47 @@ class BinaryGraphSet(bgt, ms):
     
 class TrinaryGraphSet(tgt, ms):
     __doc__=docs['trinary']
- 
+
+
+
+class GroupSet(gt, ms):
+    __doc__=docs["group"]
+    
+    def _trackIndex(self, data): return IndexedSet(data)
+    
+    def new_groups(self, **groups) ->Self:
+        for name, members in groups.items():
+            self._check_grp_not_exists(name); self._check_members(members); self._get_groups.setdefault(name, set(self.order()[i] for i in members) )
+        return self
+        
+    def change_members(self, target, new_members: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target]=set(self.order()[i] for i in new_members)
+    
+    def add_members(self, target: str, new_nembers: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target].update(self.order()[i] for i in new_members)
+    
+    def free_group(self, target: str): self._error_for_nonexisting_grp(target); self._get_groups[target].clear() 
+    
+    def order(self) ->tuple[T]: return tuple(self._values._manipulator.key_order)            
+     
+
+class GroupFrozenSet(gt, mfs):
+    __doc__=docs["group"]
+    
+    def _trackIndex(self, data): return IndexedFrozenSet(data)
+    
+    def new_groups(self, **groups) ->Self:
+        for name, members in groups.items():
+            self._check_grp_not_exists(name); self._check_members(members); self._get_groups.setdefault(name, frozenset(self.order()[i] for i in members) )
+        return self
+        
+    def change_members(self, target, new_members: Iterable[int]):
+        self._check_grp_exists(target); self._check_members(new_members); self._get_groups[target]=frozenset(self.order()[i] for i in new_members)
+    
+    def order(self) ->tuple[T]: return tuple(self._values._manipulator.key_order)        
+    
+
+
 
 def f(s):
     print([i for i in s])

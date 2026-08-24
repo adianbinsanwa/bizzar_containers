@@ -123,26 +123,6 @@ class DualValueDict[T, U](md[T, U]):
     def pop(self, key: T, default: D=None) ->tuple[U|D, Any]: r=(self.get(key, default), self.extra_values.get(key, None) ); del self[key]; return r
        
 
-class CanonicalDict(md):
-    """CanonicalDict is an dict variant which has canonical values.
-       it takes a function 'checker(existing_value, new_value)' and uses it upon adding every new key-value pairs.
-       if it(checker) returns Ture → considers 'equal' and sets existing_value to the new key turning it into an alias of that value.
-       if however returns False with every existing values. it'll considered an 'unique' value and it would set the key-value normally
-    """
-    
-    def __init__(self, func: Callable[[Any, Any], bool], /, *args, **kwargs): super().__init__(CanonicalM(func), *args, **kwargs)
-    @property
-    def checker(self) ->Callable[[Any, Any], bool]: return self._manipulator.checker
-
-
-class TypedDict(md):
-    __doc__=docs['typed']
-    
-    def __init__(self, allowed_keys: tuple[type]|type, allowed_values: tuple[type]|type, /, *args, **kwargs): super().__init__(TypedM(ts(allowed_keys), ts(allowed_values) ), *args, **kwargs)
-    @property
-    def allowed_types(self) ->dict[str, tuple[type] ]: return mpt({"key": self._manipulator.allowed_keys,"value": self._manipulator.allowed_values})
-
-
 class FixSizedDict(md):
     """FixSizedDict is a sub version of SizedDict. it enforces fix size while allowing mutation
    
@@ -162,6 +142,26 @@ class LifetimeDict(lt, md):
     def setdefault(self, key: Hashable, default, lifespan: Optional[int]=None):
         if lifespan is None or key in self: return super().setdefault(key, default)
         self._values[key]=default; self._manipulator.items[key]=self._lifespan_is_valid(lifespan); return default
+
+
+class CanonicalDict(md):
+    """CanonicalDict is an dict variant which has canonical values.
+       it takes a function 'checker(existing_value, new_value)' and uses it upon adding every new key-value pairs.
+       if it(checker) returns Ture → considers 'equal' and sets existing_value to the new key turning it into an alias of that value.
+       if however returns False with every existing values. it'll considered an 'unique' value and it would set the key-value normally
+    """
+    
+    def __init__(self, func: Callable[[Any, Any], bool], /, *args, **kwargs): super().__init__(CanonicalM(func), *args, **kwargs)
+    @property
+    def checker(self) ->Callable[[Any, Any], bool]: return self._manipulator.checker
+
+
+class TypedDict(md):
+    __doc__=docs['typed']
+    
+    def __init__(self, allowed_keys: tuple[type]|type, allowed_values: tuple[type]|type, /, *args, **kwargs): super().__init__(TypedM(ts(allowed_keys), ts(allowed_values) ), *args, **kwargs)
+    @property
+    def allowed_types(self) ->dict[str, tuple[type] ]: return mpt({"key": self._manipulator.allowed_keys,"value": self._manipulator.allowed_values})
 
 
 class IndexedDict(it, md, IndexedDictType):
